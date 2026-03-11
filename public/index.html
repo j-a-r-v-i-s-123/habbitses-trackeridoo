@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habittracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.1);
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+    }
+    h1 { text-align: center; margin-bottom: 0.5rem; font-size: 1.5rem; }
+    .subtitle { text-align: center; color: #888; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .tabs {
+      display: flex;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid #eee;
+    }
+    .tab {
+      flex: 1;
+      padding: 0.75rem;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 1rem;
+      color: #888;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+    .tab.active { color: #5b4fcf; border-bottom-color: #5b4fcf; font-weight: 600; }
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 500; }
+    input {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+    input:focus { outline: none; border-color: #5b4fcf; }
+    input.error { border-color: #e74c3c; }
+    .error-text { color: #e74c3c; font-size: 0.8rem; margin-top: 0.25rem; }
+    .btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: #5b4fcf;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #4a3fbf; }
+    .btn:disabled { background: #b0a8e6; cursor: not-allowed; }
+    .alert { padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.875rem; }
+    .alert-error { background: #fde8e8; color: #c0392b; }
+    .alert-success { background: #e8fde8; color: #27ae60; }
+    .dashboard { display: none; }
+    .user-info { text-align: center; padding: 1rem 0; }
+    .user-info .email { font-size: 1.1rem; font-weight: 600; }
+    .user-info .since { color: #888; font-size: 0.85rem; margin-top: 0.25rem; }
+    .btn-logout { background: #e74c3c; margin-top: 1rem; }
+    .btn-logout:hover { background: #c0392b; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Auth Forms -->
+    <div id="auth-section">
+      <h1>Habittracker</h1>
+      <p class="subtitle">Track your habits, build your life</p>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="login">Login</button>
+        <button class="tab" data-tab="register">Register</button>
+      </div>
+
+      <div id="alert" class="alert hidden"></div>
+
+      <!-- Login Form -->
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com" required>
+          <div class="error-text hidden" id="login-email-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="Your password" required>
+          <div class="error-text hidden" id="login-password-error"></div>
+        </div>
+        <button type="submit" class="btn" id="login-btn">Login</button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="hidden">
+        <div class="form-group">
+          <label for="register-name">Name (optional)</label>
+          <input type="text" id="register-name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label for="register-email">Email</label>
+          <input type="email" id="register-email" placeholder="you@example.com" required>
+          <div class="error-text hidden" id="register-email-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="register-password">Password</label>
+          <input type="password" id="register-password" placeholder="Min 8 characters" required>
+          <div class="error-text hidden" id="register-password-error"></div>
+        </div>
+        <div class="form-group">
+          <label for="register-confirm">Confirm Password</label>
+          <input type="password" id="register-confirm" placeholder="Confirm password" required>
+          <div class="error-text hidden" id="register-confirm-error"></div>
+        </div>
+        <button type="submit" class="btn" id="register-btn">Create Account</button>
+      </form>
+    </div>
+
+    <!-- Dashboard (shown after login) -->
+    <div id="dashboard-section" class="hidden">
+      <h1>Welcome!</h1>
+      <div class="user-info">
+        <div class="email" id="user-email"></div>
+        <div class="since" id="user-since"></div>
+        <div id="user-name" style="color: #888; margin-top: 0.25rem;"></div>
+      </div>
+      <p style="text-align: center; color: #888; margin: 1rem 0;">
+        You're logged in. Habit tracking features coming soon!
+      </p>
+      <button class="btn btn-logout" id="logout-btn">Logout</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
