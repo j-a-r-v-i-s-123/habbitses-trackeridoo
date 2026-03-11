@@ -1,0 +1,62 @@
+const BASE = "/api";
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Request failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export interface Habit {
+  id: string;
+  name: string;
+  description: string | null;
+  frequency: string;
+  color: string;
+  icon: string;
+  archived: boolean;
+}
+
+export interface CheckIn {
+  id: string;
+  habitId: string;
+  date: string;
+  status: "done" | "skipped";
+  habit?: Pick<Habit, "id" | "name" | "color" | "icon" | "frequency">;
+}
+
+export const api = {
+  // Auth
+  login: (email: string, password: string) =>
+    request<{ token: string }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+  register: (email: string, password: string, name?: string) =>
+    request<{ token: string }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, name }),
+    }),
+  me: () => request<{ user: { id: string; email: string; name: string | null } }>("/auth/me"),
+  logout: () => request("/auth/logout", { method: "POST" }),
+
+  // Habits
+  getHabits: () => request<{ habits: Habit[] }>("/habits"),
+
+  // Check-ins
+  getCheckIns: (date: string) =>
+    request<{ checkIns: CheckIn[] }>(`/check-ins?date=${date}`),
+  createCheckIn: (habitId: string, date: string, status: "done" | "skipped") =>
+    request<{ checkIn: CheckIn }>("/check-ins", {
+      method: "POST",
+      body: JSON.stringify({ habitId, date, status }),
+    }),
+  deleteCheckIn: (id: string) =>
+    request<{ message: string }>(`/check-ins/${id}`, { method: "DELETE" }),
+};

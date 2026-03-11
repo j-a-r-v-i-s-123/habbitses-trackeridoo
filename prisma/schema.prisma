@@ -16,20 +16,37 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   habits    Habit[]
+  checkIns  CheckIn[]
 }
 
 model Habit {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
   description String?
-  frequency   String   @default("daily")
-  color       String   @default("#5b4fcf")
-  icon        String   @default("star")
-  archived    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  frequency   String    @default("daily")
+  color       String    @default("#5b4fcf")
+  icon        String    @default("star")
+  archived    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIns    CheckIn[]
 
   @@index([userId])
+}
+
+model CheckIn {
+  id        String   @id @default(cuid())
+  date      String   // YYYY-MM-DD format
+  status    String   // "done" or "skipped"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([userId, date])
 }
