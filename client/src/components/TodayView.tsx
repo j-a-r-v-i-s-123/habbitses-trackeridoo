@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { api, Habit, CheckIn } from "@/hooks/useApi";
+import { api, Habit, CheckIn, Streaks } from "@/hooks/useApi";
 
 function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -40,6 +40,7 @@ export default function TodayView({ onLogout }: TodayViewProps) {
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [loading, setLoading] = useState(true);
   const [animating, setAnimating] = useState<string | null>(null);
+  const [streaks, setStreaks] = useState<Record<string, Streaks>>({});
 
   const loadData = useCallback(async () => {
     try {
@@ -49,6 +50,19 @@ export default function TodayView({ onLogout }: TodayViewProps) {
       ]);
       setHabits(habitsRes.habits);
       setCheckIns(checkInsRes.checkIns);
+
+      // Load streaks for all habits
+      const streakResults = await Promise.all(
+        habitsRes.habits.map(async (h) => {
+          try {
+            const s = await api.getStreaks(h.id);
+            return [h.id, s] as const;
+          } catch {
+            return [h.id, { currentStreak: 0, bestStreak: 0, completionRate: 0 }] as const;
+          }
+        })
+      );
+      setStreaks(Object.fromEntries(streakResults));
     } catch (err) {
       console.error("Failed to load data:", err);
     } finally {
@@ -187,6 +201,7 @@ export default function TodayView({ onLogout }: TodayViewProps) {
               const isDone = checkIn?.status === "done";
               const isSkipped = checkIn?.status === "skipped";
               const isAnimatingThis = animating === habit.id;
+              const habitStreaks = streaks[habit.id];
 
               return (
                 <div
@@ -206,13 +221,30 @@ export default function TodayView({ onLogout }: TodayViewProps) {
                       {ICONS[habit.icon] || ICONS.star}
                     </div>
 
-                    {/* Name */}
+                    {/* Name & Streaks */}
                     <div className="flex-1 min-w-0">
                       <p className={`font-medium truncate ${isDone ? "text-green-700 line-through" : isSkipped ? "text-gray-400" : "text-gray-900"}`}>
                         {habit.name}
                       </p>
                       {habit.description && (
                         <p className="text-xs text-gray-400 truncate">{habit.description}</p>
+                      )}
+                      {habitStreaks && (
+                        <div className="flex gap-3 mt-1">
+                          {habitStreaks.currentStreak > 0 && (
+                            <span className="text-xs font-medium text-orange-500">
+                              {habitStreaks.currentStreak}d streak
+                            </span>
+                          )}
+                          {habitStreaks.bestStreak > 1 && (
+                            <span className="text-xs text-gray-400">
+                              Best: {habitStreaks.bestStreak}d
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400">
+                            {habitStreaks.completionRate}%
+                          </span>
+                        </div>
                       )}
                     </div>
 

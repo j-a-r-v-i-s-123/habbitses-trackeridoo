@@ -31,6 +31,12 @@ export interface CheckIn {
   habit?: Pick<Habit, "id" | "name" | "color" | "icon" | "frequency">;
 }
 
+export interface Streaks {
+  currentStreak: number;
+  bestStreak: number;
+  completionRate: number;
+}
+
 export const api = {
   // Auth
   login: (email: string, password: string) =>
@@ -48,6 +54,10 @@ export const api = {
 
   // Habits
   getHabits: () => request<{ habits: Habit[] }>("/habits"),
+
+  // Streaks
+  getStreaks: (habitId: string) =>
+    request<Streaks>(`/habits/${habitId}/streaks`),
 
   // Check-ins
   getCheckIns: (date: string) =>
