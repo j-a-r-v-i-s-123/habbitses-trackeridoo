@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import prisma from "../db";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
+import { isApplicableDay, calculateStreaks } from "../utils/streaks";
 
 const router = Router();
 
@@ -131,63 +132,6 @@ router.get("/overview", async (req: AuthRequest, res: Response): Promise<void> =
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
-const DAY_INDEX_MAP: Record<string, number> = {
-  sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
-};
-
-function isApplicableDay(dateStr: string, frequency: string): boolean {
-  if (frequency === "daily") return true;
-  if (frequency === "weekly") return true;
-  const d = new Date(dateStr + "T12:00:00");
-  const dayOfWeek = d.getDay();
-  const days = frequency.split(",").map((s) => s.trim().toLowerCase());
-  return days.some((day) => DAY_INDEX_MAP[day] === dayOfWeek);
-}
-
-function calculateStreaks(
-  frequency: string,
-  createdAt: Date,
-  doneSet: Set<string>,
-  today: Date
-): { currentStreak: number; bestStreak: number } {
-  const startDate = new Date(createdAt);
-  startDate.setHours(12, 0, 0, 0);
-
-  if (today < startDate) return { currentStreak: 0, bestStreak: 0 };
-
-  const applicableDates: string[] = [];
-  const cursor = new Date(today);
-  while (cursor >= startDate) {
-    const ds = cursor.toISOString().slice(0, 10);
-    if (isApplicableDay(ds, frequency)) {
-      applicableDates.push(ds);
-    }
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  if (applicableDates.length === 0) return { currentStreak: 0, bestStreak: 0 };
-
-  let currentStreak = 0;
-  let bestStreak = 0;
-  let streak = 0;
-  let currentDone = true;
-
-  for (const ds of applicableDates) {
-    if (doneSet.has(ds)) {
-      if (currentDone) currentStreak++;
-      streak++;
-    } else {
-      if (currentDone) currentDone = false;
-      if (streak > bestStreak) bestStreak = streak;
-      streak = 0;
-    }
-  }
-  if (streak > bestStreak) bestStreak = streak;
-  if (currentStreak > bestStreak) bestStreak = currentStreak;
-
-  return { currentStreak, bestStreak };
-}
 
 function getLast12WeeksData(
   doneSet: Set<string>,
