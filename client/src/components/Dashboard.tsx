@@ -18,11 +18,7 @@ const ICONS: Record<string, string> = {
   plant: "\uD83C\uDF31", brain: "\uD83E\uDDE0", writing: "\u270D\uFE0F",
 };
 
-interface DashboardProps {
-  onBack: () => void;
-}
-
-export default function Dashboard({ onBack }: DashboardProps) {
+export default function Dashboard() {
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -37,36 +33,26 @@ export default function Dashboard({ onBack }: DashboardProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-400">Loading dashboard...</div>
+      <div className="flex items-center justify-center py-20">
+        <div className="text-gray-400 dark:text-gray-500">Loading dashboard...</div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-red-500">{error || "Failed to load"}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <button
-            onClick={onBack}
-            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-          >
-            Back to Today
-          </button>
-        </div>
 
         {/* Motivational Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 mt-2">
           <StatCard label="Week Rate" value={`${data.weekCompletionRate}%`} sub="completion" color="indigo" />
           <StatCard label="Month Rate" value={`${data.monthCompletionRate}%`} sub="completion" color="blue" />
           <StatCard label="Total Check-ins" value={String(data.totalCheckIns)} sub="all time" color="green" />
@@ -74,15 +60,15 @@ export default function Dashboard({ onBack }: DashboardProps) {
         </div>
 
         {/* Calendar Heatmap */}
-        <section className="bg-white rounded-xl shadow-sm p-5 mb-8">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">Activity Heatmap</h2>
+        <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 mb-8">
+          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Activity Heatmap</h2>
           <CalendarHeatmap dailyActivity={data.dailyActivity} />
         </section>
 
         {/* Per-Habit Charts */}
         {data.habitStats.length > 0 && (
-          <section className="bg-white rounded-xl shadow-sm p-5 mb-8">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">
+          <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 mb-8">
+            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
               Habit Progress (Last 12 Weeks)
             </h2>
             <div className="space-y-8">
@@ -90,8 +76,8 @@ export default function Dashboard({ onBack }: DashboardProps) {
                 <div key={habit.id}>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-lg">{ICONS[habit.icon] || ICONS.star}</span>
-                    <span className="font-medium text-gray-700">{habit.name}</span>
-                    <span className="text-xs text-gray-400 ml-auto">
+                    <span className="font-medium text-gray-700 dark:text-gray-200">{habit.name}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
                       streak: {habit.currentStreak}d | best: {habit.bestStreak}d | total: {habit.totalDone}
                     </span>
                   </div>
@@ -119,18 +105,18 @@ export default function Dashboard({ onBack }: DashboardProps) {
         )}
 
         {/* Habits Maintained */}
-        <section className="bg-white rounded-xl shadow-sm p-5">
-          <h2 className="text-lg font-semibold text-gray-700 mb-3">
+        <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+          <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-3">
             Habits Maintained ({data.activeHabits})
           </h2>
           {data.habitStats.length === 0 ? (
-            <p className="text-gray-400 text-sm">No habits yet. Create one to get started!</p>
+            <p className="text-gray-400 dark:text-gray-500 text-sm">No habits yet. Create one to get started!</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {data.habitStats.map((h) => (
                 <div
                   key={h.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-gray-100"
+                  className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-700"
                 >
                   <div
                     className="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
@@ -139,8 +125,8 @@ export default function Dashboard({ onBack }: DashboardProps) {
                     {ICONS[h.icon] || ICONS.star}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-700 truncate">{h.name}</div>
-                    <div className="text-xs text-gray-400">
+                    <div className="font-medium text-gray-700 dark:text-gray-200 truncate">{h.name}</div>
+                    <div className="text-xs text-gray-400 dark:text-gray-500">
                       {h.currentStreak}d streak | {h.totalDone} check-ins
                     </div>
                   </div>
@@ -166,10 +152,10 @@ function StatCard({
   color: string;
 }) {
   const colorMap: Record<string, string> = {
-    indigo: "bg-indigo-50 text-indigo-700",
-    blue: "bg-blue-50 text-blue-700",
-    green: "bg-green-50 text-green-700",
-    orange: "bg-orange-50 text-orange-700",
+    indigo: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+    blue: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    green: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    orange: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   };
   const cls = colorMap[color] || colorMap.indigo;
 

@@ -30,12 +30,7 @@ const ICONS: Record<string, string> = {
   music: "\uD83C\uDFB5",
 };
 
-interface TodayViewProps {
-  onLogout: () => void;
-  onDashboard?: () => void;
-}
-
-export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
+export default function TodayView() {
   const [date, setDate] = useState(() => formatDate(new Date()));
   const [habits, setHabits] = useState<Habit[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
@@ -123,36 +118,13 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
   const totalActive = habits.length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-lg font-bold text-gray-900">Habit Tracker</h1>
-          <div className="flex items-center gap-3">
-            {onDashboard && (
-              <button
-                onClick={onDashboard}
-                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-              >
-                Dashboard
-              </button>
-            )}
-            <button
-              onClick={onLogout}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Log out
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <div>
       <div className="max-w-lg mx-auto px-4 py-6">
         {/* Date Navigation */}
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => navigateDate(-1)}
-            className="p-2 rounded-lg hover:bg-gray-200 transition-colors text-gray-600"
+            className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400"
             aria-label="Previous day"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,15 +132,15 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
             </svg>
           </button>
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               {formatDisplayDate(date)}
             </h2>
-            <p className="text-sm text-gray-500">{date}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{date}</p>
           </div>
           <button
             onClick={() => navigateDate(1)}
             disabled={isToday}
-            className="p-2 rounded-lg hover:bg-gray-200 transition-colors text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-400 disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="Next day"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,16 +153,16 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
         {totalActive > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 {completedCount} of {totalActive} done
               </span>
-              <span className="text-sm font-medium text-gray-600">
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 {totalActive > 0 ? Math.round((completedCount / totalActive) * 100) : 0}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
               <div
-                className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500 ease-out"
+                className="bg-primary-600 h-2.5 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${totalActive > 0 ? (completedCount / totalActive) * 100 : 0}%` }}
               />
             </div>
@@ -199,11 +171,11 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
 
         {/* Habits List */}
         {loading ? (
-          <div className="text-center py-12 text-gray-400">Loading...</div>
+          <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading...</div>
         ) : habits.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400 text-lg mb-2">No habits yet</p>
-            <p className="text-gray-400 text-sm">Create some habits to start tracking!</p>
+            <p className="text-gray-400 dark:text-gray-500 text-lg mb-2">No habits yet</p>
+            <p className="text-gray-400 dark:text-gray-500 text-sm">Create some habits to start tracking!</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -218,8 +190,8 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
                 <div
                   key={habit.id}
                   className={`
-                    bg-white rounded-xl p-4 shadow-sm border-2 transition-all duration-300
-                    ${isDone ? "border-green-400 bg-green-50" : isSkipped ? "border-gray-300 bg-gray-50" : "border-transparent"}
+                    bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border-2 transition-all duration-300
+                    ${isDone ? "border-green-400 bg-green-50 dark:bg-green-900/20" : isSkipped ? "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50" : "border-transparent"}
                     ${isAnimatingThis ? "scale-[1.02]" : ""}
                   `}
                 >
@@ -234,11 +206,11 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
 
                     {/* Name & Streaks */}
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium truncate ${isDone ? "text-green-700 line-through" : isSkipped ? "text-gray-400" : "text-gray-900"}`}>
+                      <p className={`font-medium truncate ${isDone ? "text-green-700 dark:text-green-400 line-through" : isSkipped ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-white"}`}>
                         {habit.name}
                       </p>
                       {habit.description && (
-                        <p className="text-xs text-gray-400 truncate">{habit.description}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{habit.description}</p>
                       )}
                       {habitStreaks && (
                         <div className="flex gap-3 mt-1">
@@ -248,11 +220,11 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
                             </span>
                           )}
                           {habitStreaks.bestStreak > 1 && (
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
                               Best: {habitStreaks.bestStreak}d
                             </span>
                           )}
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
                             {habitStreaks.completionRate}%
                           </span>
                         </div>
@@ -267,8 +239,8 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
                         className={`
                           w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
                           ${isDone
-                            ? "bg-green-500 text-white shadow-md shadow-green-200"
-                            : "bg-gray-100 text-gray-400 hover:bg-green-100 hover:text-green-600"
+                            ? "bg-green-500 text-white shadow-md shadow-green-200 dark:shadow-green-900"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-green-100 dark:hover:bg-green-900/30 hover:text-green-600 dark:hover:text-green-400"
                           }
                           ${isAnimatingThis ? "animate-bounce" : ""}
                         `}
@@ -285,8 +257,8 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
                         className={`
                           w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
                           ${isSkipped
-                            ? "bg-gray-400 text-white shadow-md shadow-gray-200"
-                            : "bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                            ? "bg-gray-400 text-white shadow-md shadow-gray-200 dark:shadow-gray-900"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-600 dark:hover:text-gray-300"
                           }
                         `}
                         aria-label={`Skip ${habit.name}`}
@@ -307,7 +279,7 @@ export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
         {!isToday && (
           <button
             onClick={() => setDate(formatDate(new Date()))}
-            className="mt-6 w-full py-2 text-indigo-600 font-medium text-sm hover:underline"
+            className="mt-6 w-full py-2 text-primary-600 dark:text-primary-400 font-medium text-sm hover:underline"
           >
             Jump to Today
           </button>

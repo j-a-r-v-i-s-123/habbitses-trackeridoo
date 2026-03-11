@@ -3,8 +3,11 @@ import { api } from "@/hooks/useApi";
 import AuthForm from "@/components/AuthForm";
 import TodayView from "@/components/TodayView";
 import Dashboard from "@/components/Dashboard";
+import HabitsView from "@/components/HabitsView";
+import SettingsView from "@/components/SettingsView";
+import Layout from "@/components/Layout";
 
-type Page = "today" | "dashboard";
+type Page = "today" | "dashboard" | "habits" | "settings";
 
 function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -26,8 +29,8 @@ function App() {
 
   if (authed === null) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-gray-400 dark:text-gray-500">Loading...</div>
       </div>
     );
   }
@@ -36,15 +39,13 @@ function App() {
     return <AuthForm onAuth={() => setAuthed(true)} />;
   }
 
-  if (page === "dashboard") {
-    return <Dashboard onBack={() => setPage("today")} />;
-  }
-
   return (
-    <TodayView
-      onLogout={handleLogout}
-      onDashboard={() => setPage("dashboard")}
-    />
+    <Layout page={page} onNavigate={setPage} onLogout={handleLogout}>
+      {page === "dashboard" && <Dashboard />}
+      {page === "today" && <TodayView />}
+      {page === "habits" && <HabitsView />}
+      {page === "settings" && <SettingsView />}
+    </Layout>
   );
 }
 

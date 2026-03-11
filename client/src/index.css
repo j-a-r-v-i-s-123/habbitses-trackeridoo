@@ -10,3 +10,16 @@
 .animate-bounce {
   animation: bounce-once 0.4s ease-in-out;
 }
+
+/* Smooth transitions for dark mode */
+* {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+/* Sidebar transition */
+.sidebar-enter {
+  transform: translateX(-100%);
+}
+.sidebar-enter-active {
+  transform: translateX(0);
+}
