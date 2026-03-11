@@ -12,6 +12,7 @@ const ICONS: Record<string, string> = {
 export default function HabitsView() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savingReminder, setSavingReminder] = useState<string | null>(null);
 
   useEffect(() => {
     api.getHabits()
@@ -19,6 +20,29 @@ export default function HabitsView() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  async function toggleReminder(habit: Habit) {
+    setSavingReminder(habit.id);
+    try {
+      const newEnabled = !habit.reminderEnabled;
+      await api.updateReminder(
+        habit.id,
+        newEnabled,
+        habit.reminderTime || "09:00",
+      );
+      setHabits((prev) =>
+        prev.map((h) =>
+          h.id === habit.id
+            ? { ...h, reminderEnabled: newEnabled, reminderTime: h.reminderTime || "09:00" }
+            : h,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to toggle reminder:", err);
+    } finally {
+      setSavingReminder(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -73,10 +97,36 @@ export default function HabitsView() {
                     </p>
                   )}
                 </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 capitalize">
-                  {habit.frequency}
-                </span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => toggleReminder(habit)}
+                    disabled={savingReminder === habit.id}
+                    title={habit.reminderEnabled ? `Reminder at ${habit.reminderTime || "09:00"}` : "Enable reminder"}
+                    className={`
+                      p-1.5 rounded-lg transition-colors
+                      ${habit.reminderEnabled
+                        ? "text-primary-600 bg-primary-50 dark:bg-primary-900/20"
+                        : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      }
+                      ${savingReminder === habit.id ? "opacity-50" : ""}
+                    `}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                  </button>
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 capitalize">
+                    {habit.frequency}
+                  </span>
+                </div>
               </div>
+              {habit.reminderEnabled && (
+                <div className="mt-2 ml-13 pl-[52px]">
+                  <span className="text-xs text-primary-600 dark:text-primary-400">
+                    Reminder at {habit.reminderTime || "09:00"}
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>

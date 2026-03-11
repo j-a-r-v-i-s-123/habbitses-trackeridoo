@@ -76,7 +76,7 @@ router.post("/", async (req: AuthRequest, res: Response): Promise<void> => {
 router.put("/:id", async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;
-    const { name, description, frequency, color, icon, archived } = req.body;
+    const { name, description, frequency, color, icon, archived, reminderEnabled, reminderTime } = req.body;
 
     const existing = await prisma.habit.findFirst({
       where: { id, userId: req.userId! },
@@ -109,6 +109,12 @@ router.put("/:id", async (req: AuthRequest, res: Response): Promise<void> => {
     if (icon !== undefined) data.icon = icon;
     if (archived !== undefined) {
       data.archived = archived;
+    }
+    if (reminderEnabled !== undefined) {
+      data.reminderEnabled = reminderEnabled;
+    }
+    if (reminderTime !== undefined) {
+      data.reminderTime = reminderTime;
     }
 
     const habit = await prisma.habit.update({ where: { id }, data });

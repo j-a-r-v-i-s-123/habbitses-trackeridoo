@@ -21,6 +21,15 @@ export interface Habit {
   color: string;
   icon: string;
   archived: boolean;
+  reminderEnabled: boolean;
+  reminderTime: string | null;
+}
+
+export interface ReminderSetting {
+  id: string;
+  name: string;
+  reminderEnabled: boolean;
+  reminderTime: string | null;
 }
 
 export interface CheckIn {
@@ -95,4 +104,13 @@ export const api = {
   // Analytics
   getAnalyticsOverview: () =>
     request<AnalyticsOverview>("/analytics/overview"),
+
+  // Reminders
+  getReminders: () =>
+    request<{ reminders: ReminderSetting[] }>("/reminders"),
+  updateReminder: (habitId: string, reminderEnabled: boolean, reminderTime?: string) =>
+    request<{ reminder: ReminderSetting }>(`/reminders/${habitId}`, {
+      method: "PUT",
+      body: JSON.stringify({ reminderEnabled, reminderTime }),
+    }),
 };
