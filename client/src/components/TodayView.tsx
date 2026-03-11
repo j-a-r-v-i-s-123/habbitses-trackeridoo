@@ -32,9 +32,10 @@ const ICONS: Record<string, string> = {
 
 interface TodayViewProps {
   onLogout: () => void;
+  onDashboard?: () => void;
 }
 
-export default function TodayView({ onLogout }: TodayViewProps) {
+export default function TodayView({ onLogout, onDashboard }: TodayViewProps) {
   const [date, setDate] = useState(() => formatDate(new Date()));
   const [habits, setHabits] = useState<Habit[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
@@ -127,12 +128,22 @@ export default function TodayView({ onLogout }: TodayViewProps) {
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-lg font-bold text-gray-900">Habit Tracker</h1>
-          <button
-            onClick={onLogout}
-            className="text-sm text-gray-500 hover:text-gray-700"
-          >
-            Log out
-          </button>
+          <div className="flex items-center gap-3">
+            {onDashboard && (
+              <button
+                onClick={onDashboard}
+                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+              >
+                Dashboard
+              </button>
+            )}
+            <button
+              onClick={onLogout}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Log out
+            </button>
+          </div>
         </div>
       </header>
 

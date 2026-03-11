@@ -6,6 +6,7 @@ import path from "path";
 import authRoutes from "./routes/auth";
 import habitRoutes from "./routes/habits";
 import checkInRoutes from "./routes/check-ins";
+import analyticsRoutes from "./routes/analytics";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,6 +22,7 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.use("/api/auth", authRoutes);
 app.use("/api/habits", habitRoutes);
 app.use("/api/check-ins", checkInRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {

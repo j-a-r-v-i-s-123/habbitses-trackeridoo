@@ -37,6 +37,28 @@ export interface Streaks {
   completionRate: number;
 }
 
+export interface HabitStat {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  frequency: string;
+  currentStreak: number;
+  bestStreak: number;
+  totalDone: number;
+  weeklyData: { week: string; done: number; total: number }[];
+}
+
+export interface AnalyticsOverview {
+  weekCompletionRate: number;
+  monthCompletionRate: number;
+  totalCheckIns: number;
+  longestStreak: number;
+  activeHabits: number;
+  dailyActivity: Record<string, number>;
+  habitStats: HabitStat[];
+}
+
 export const api = {
   // Auth
   login: (email: string, password: string) =>
@@ -69,4 +91,8 @@ export const api = {
     }),
   deleteCheckIn: (id: string) =>
     request<{ message: string }>(`/check-ins/${id}`, { method: "DELETE" }),
+
+  // Analytics
+  getAnalyticsOverview: () =>
+    request<AnalyticsOverview>("/analytics/overview"),
 };
