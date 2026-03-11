@@ -1,0 +1,8 @@
+{
+  "runtime": "node",
+  "setup": "apt-get update && apt-get install -y openssl",
+  "install": "npm install && cd client && npm install && cd ..",
+  "build": "npx prisma generate && npx tsc && cd client && npx vite build --outDir ../public && cd ..",
+  "start": "DATABASE_URL=file:./dev.db npx prisma migrate deploy && DATABASE_URL=file:./dev.db node dist/server.js",
+  "port": 3000
+}
