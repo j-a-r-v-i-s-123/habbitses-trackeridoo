@@ -15,4 +15,22 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  habits    Habit[]
+}
+
+model Habit {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  frequency   String   @default("daily")
+  customDays  String?
+  color       String   @default("#5b4fcf")
+  icon        String   @default("star")
+  archived    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
 import authRoutes from "./routes/auth";
+import habitRoutes from "./routes/habits";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,8 +18,9 @@ app.use(express.static(path.join(__dirname, "../public")));
 
 // API routes
 app.use("/api/auth", authRoutes);
+app.use("/api/habits", habitRoutes);
 
-// Example protected route
+// Health check
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
