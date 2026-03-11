@@ -1,114 +1,39 @@
 const AUTH_API = "/api/auth";
 const HABITS_API = "/api/habits";
 
-const COLORS = ["#5b4fcf", "#e74c3c", "#27ae60", "#f39c12", "#3498db", "#9b59b6", "#1abc9c", "#e67e22", "#2c3e50", "#e91e63"];
-const ICONS = [
-  { id: "star", emoji: "\u2b50" },
-  { id: "fire", emoji: "\ud83d\udd25" },
-  { id: "book", emoji: "\ud83d\udcda" },
-  { id: "run", emoji: "\ud83c\udfc3" },
-  { id: "water", emoji: "\ud83d\udca7" },
-  { id: "sleep", emoji: "\ud83d\ude34" },
-  { id: "food", emoji: "\ud83e\udd57" },
-  { id: "meditate", emoji: "\ud83e\uddd8" },
-  { id: "music", emoji: "\ud83c\udfb5" },
-  { id: "code", emoji: "\ud83d\udcbb" },
-  { id: "heart", emoji: "\u2764\ufe0f" },
-  { id: "gym", emoji: "\ud83c\udfcb\ufe0f" },
-];
-const DAYS = [
-  { id: "mon", label: "Mon" },
-  { id: "tue", label: "Tue" },
-  { id: "wed", label: "Wed" },
-  { id: "thu", label: "Thu" },
-  { id: "fri", label: "Fri" },
-  { id: "sat", label: "Sat" },
-  { id: "sun", label: "Sun" },
-];
+const ICON_MAP = {
+  star: "\u2B50",
+  heart: "\u2764\uFE0F",
+  fire: "\uD83D\uDD25",
+  book: "\uD83D\uDCD6",
+  run: "\uD83C\uDFC3",
+  water: "\uD83D\uDCA7",
+  sleep: "\uD83D\uDE34",
+  meditate: "\uD83E\uDDD7",
+  code: "\uD83D\uDCBB",
+  music: "\uD83C\uDFB5",
+};
 
 // State
-let showArchived = false;
-let habitsCache = [];
+let currentUser = null;
+let habits = [];
+let editingHabitId = null;
+let deletingHabitId = null;
 
-// DOM
+// DOM elements
 const authSection = document.getElementById("auth-section");
 const dashboardSection = document.getElementById("dashboard-section");
 const loginForm = document.getElementById("login-form");
 const registerForm = document.getElementById("register-form");
 const alertEl = document.getElementById("alert");
 const tabs = document.querySelectorAll(".tab");
-const modalRoot = document.getElementById("modal-root");
 
-// --- Auth helpers ---
-function getToken() {
-  return localStorage.getItem("token");
-}
+// ---- Auth ----
 
-function authHeaders() {
-  return {
-    "Content-Type": "application/json",
-    Authorization: "Bearer " + getToken(),
-  };
-}
-
-// --- UI helpers ---
-function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function showFieldError(id, msg) {
-  var el = document.getElementById(id);
-  var input = el.previousElementSibling;
-  el.textContent = msg;
-  el.classList.remove("hidden");
-  if (input) input.classList.add("error");
-}
-
-function clearErrors() {
-  document.querySelectorAll(".error-text").forEach(function (el) {
-    el.classList.add("hidden");
-    el.textContent = "";
-  });
-  document.querySelectorAll("input.error").forEach(function (el) {
-    el.classList.remove("error");
-  });
-}
-
-function showAlert(msg, type) {
-  alertEl.textContent = msg;
-  alertEl.className = "alert alert-" + type;
-  alertEl.classList.remove("hidden");
-}
-
-function hideAlert() {
-  alertEl.classList.add("hidden");
-}
-
-function getIconEmoji(iconId) {
-  var icon = ICONS.find(function (i) { return i.id === iconId; });
-  return icon ? icon.emoji : "\u2b50";
-}
-
-function formatFrequency(freq) {
-  if (freq === "daily") return "Daily";
-  if (freq === "weekly") return "Weekly";
-  return freq.split(",").map(function (d) {
-    var t = d.trim();
-    return t.charAt(0).toUpperCase() + t.slice(1);
-  }).join(", ");
-}
-
-function escapeHtml(str) {
-  var div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-// --- Tab switching ---
-tabs.forEach(function (tab) {
-  tab.addEventListener("click", function () {
-    var target = tab.dataset.tab;
-    tabs.forEach(function (t) { t.classList.remove("active"); });
+tabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const target = tab.dataset.tab;
+    tabs.forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
     clearErrors();
     hideAlert();
@@ -122,15 +47,53 @@ tabs.forEach(function (tab) {
   });
 });
 
-// --- Auth: Login ---
-loginForm.addEventListener("submit", async function (e) {
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function showFieldError(id, msg) {
+  const el = document.getElementById(id);
+  const input = el.previousElementSibling;
+  el.textContent = msg;
+  el.classList.remove("hidden");
+  if (input) input.classList.add("error");
+}
+
+function clearErrors() {
+  document.querySelectorAll(".error-text").forEach((el) => {
+    el.classList.add("hidden");
+    el.textContent = "";
+  });
+  document.querySelectorAll("input.error").forEach((el) => {
+    el.classList.remove("error");
+  });
+}
+
+function showAlert(msg, type) {
+  alertEl.textContent = msg;
+  alertEl.className = `alert alert-${type}`;
+  alertEl.classList.remove("hidden");
+}
+
+function hideAlert() {
+  alertEl.classList.add("hidden");
+}
+
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = "Bearer " + token;
+  return headers;
+}
+
+loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearErrors();
   hideAlert();
 
-  var email = document.getElementById("login-email").value.trim();
-  var password = document.getElementById("login-password").value;
-  var valid = true;
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  let valid = true;
 
   if (!email || !validateEmail(email)) {
     showFieldError("login-email-error", "Please enter a valid email");
@@ -142,25 +105,26 @@ loginForm.addEventListener("submit", async function (e) {
   }
   if (!valid) return;
 
-  var btn = document.getElementById("login-btn");
+  const btn = document.getElementById("login-btn");
   btn.disabled = true;
   btn.textContent = "Logging in...";
 
   try {
-    var res = await fetch(AUTH_API + "/login", {
+    const res = await fetch(`${AUTH_API}/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ email: email, password: password }),
+      body: JSON.stringify({ email, password }),
     });
-    var data = await res.json();
+    const data = await res.json();
     if (!res.ok) {
       showAlert(data.error || "Login failed", "error");
       return;
     }
     localStorage.setItem("token", data.token);
-    showDashboard(data.user);
-  } catch (err) {
+    currentUser = data.user;
+    showDashboard();
+  } catch {
     showAlert("Network error. Please try again.", "error");
   } finally {
     btn.disabled = false;
@@ -168,17 +132,16 @@ loginForm.addEventListener("submit", async function (e) {
   }
 });
 
-// --- Auth: Register ---
-registerForm.addEventListener("submit", async function (e) {
+registerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearErrors();
   hideAlert();
 
-  var name = document.getElementById("register-name").value.trim();
-  var email = document.getElementById("register-email").value.trim();
-  var password = document.getElementById("register-password").value;
-  var confirm = document.getElementById("register-confirm").value;
-  var valid = true;
+  const name = document.getElementById("register-name").value.trim();
+  const email = document.getElementById("register-email").value.trim();
+  const password = document.getElementById("register-password").value;
+  const confirm = document.getElementById("register-confirm").value;
+  let valid = true;
 
   if (!email || !validateEmail(email)) {
     showFieldError("register-email-error", "Please enter a valid email");
@@ -194,25 +157,26 @@ registerForm.addEventListener("submit", async function (e) {
   }
   if (!valid) return;
 
-  var btn = document.getElementById("register-btn");
+  const btn = document.getElementById("register-btn");
   btn.disabled = true;
   btn.textContent = "Creating account...";
 
   try {
-    var res = await fetch(AUTH_API + "/register", {
+    const res = await fetch(`${AUTH_API}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ email: email, password: password, name: name || undefined }),
+      body: JSON.stringify({ email, password, name: name || undefined }),
     });
-    var data = await res.json();
+    const data = await res.json();
     if (!res.ok) {
       showAlert(data.error || "Registration failed", "error");
       return;
     }
     localStorage.setItem("token", data.token);
-    showDashboard(data.user);
-  } catch (err) {
+    currentUser = data.user;
+    showDashboard();
+  } catch {
     showAlert("Network error. Please try again.", "error");
   } finally {
     btn.disabled = false;
@@ -220,20 +184,22 @@ registerForm.addEventListener("submit", async function (e) {
   }
 });
 
-// --- Auth: Logout ---
-document.getElementById("logout-btn").addEventListener("click", async function () {
+document.getElementById("logout-btn").addEventListener("click", async () => {
   try {
-    await fetch(AUTH_API + "/logout", { method: "POST", credentials: "include" });
-  } catch (err) { /* ignore */ }
+    await fetch(`${AUTH_API}/logout`, { method: "POST", credentials: "include" });
+  } catch {
+    // ignore
+  }
   localStorage.removeItem("token");
+  currentUser = null;
+  habits = [];
   showAuth();
 });
 
-// --- Navigation ---
-function showDashboard(user) {
+function showDashboard() {
   authSection.classList.add("hidden");
   dashboardSection.classList.remove("hidden");
-  document.getElementById("user-badge").textContent = user.email;
+  document.getElementById("user-email-badge").textContent = currentUser ? currentUser.email : "";
   loadHabits();
 }
 
@@ -246,61 +212,53 @@ function showAuth() {
   registerForm.reset();
 }
 
-// --- Habits API ---
-async function loadHabits() {
+async function checkSession() {
+  const token = localStorage.getItem("token");
+  if (!token) return;
   try {
-    var url = showArchived ? HABITS_API + "?archived=true" : HABITS_API;
-    var res = await fetch(url, { headers: authHeaders(), credentials: "include" });
-    if (!res.ok) throw new Error("Failed to load habits");
-    var data = await res.json();
-    habitsCache = data.habits;
-    renderHabits(data.habits);
+    const res = await fetch(`${AUTH_API}/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      currentUser = data.user;
+      showDashboard();
+    } else {
+      localStorage.removeItem("token");
+    }
+  } catch {
+    // show login
+  }
+}
+
+// ---- Habits ----
+
+async function loadHabits() {
+  const showArchived = document.getElementById("show-archived").checked;
+  try {
+    const res = await fetch(`${HABITS_API}?archived=${showArchived}`, {
+      headers: getAuthHeaders(),
+      credentials: "include",
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    habits = data.habits;
+    renderHabits();
   } catch (err) {
-    console.error("Load habits error:", err);
+    console.error("Failed to load habits:", err);
   }
 }
 
-async function createHabit(habitData) {
-  var res = await fetch(HABITS_API, {
-    method: "POST",
-    headers: authHeaders(),
-    credentials: "include",
-    body: JSON.stringify(habitData),
-  });
-  if (!res.ok) {
-    var data = await res.json();
-    throw new Error(data.error || "Failed to create habit");
-  }
-  return (await res.json()).habit;
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
 }
 
-async function updateHabit(id, habitData) {
-  var res = await fetch(HABITS_API + "/" + id, {
-    method: "PUT",
-    headers: authHeaders(),
-    credentials: "include",
-    body: JSON.stringify(habitData),
-  });
-  if (!res.ok) {
-    var data = await res.json();
-    throw new Error(data.error || "Failed to update habit");
-  }
-  return (await res.json()).habit;
-}
-
-async function deleteHabit(id) {
-  var res = await fetch(HABITS_API + "/" + id, {
-    method: "DELETE",
-    headers: authHeaders(),
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error("Failed to delete habit");
-}
-
-// --- Render habits ---
-function renderHabits(habits) {
-  var list = document.getElementById("habit-list");
-  var empty = document.getElementById("empty-state");
+function renderHabits() {
+  const list = document.getElementById("habits-list");
+  const empty = document.getElementById("empty-state");
 
   if (habits.length === 0) {
     list.innerHTML = "";
@@ -309,261 +267,275 @@ function renderHabits(habits) {
   }
 
   empty.classList.add("hidden");
-  list.innerHTML = habits.map(function (h) {
-    return '<li class="habit-item' + (h.archived ? ' habit-archived' : '') + '" data-id="' + h.id + '">' +
-      '<div class="habit-icon" style="background:' + h.color + '">' + getIconEmoji(h.icon) + '</div>' +
-      '<div class="habit-info">' +
-        '<div class="habit-name">' + escapeHtml(h.name) + '</div>' +
-        (h.description ? '<div class="habit-desc">' + escapeHtml(h.description) + '</div>' : '') +
-        '<div class="habit-freq">' + formatFrequency(h.frequency) + (h.archived ? ' &middot; Archived' : '') + '</div>' +
-      '</div>' +
-      '<div class="habit-actions">' +
-        '<button class="icon-btn" onclick="openEditModal(\'' + h.id + '\')" title="Edit">&#9998;</button>' +
-        '<button class="icon-btn" onclick="toggleArchive(\'' + h.id + '\', ' + !h.archived + ')" title="' + (h.archived ? 'Unarchive' : 'Archive') + '">&#128230;</button>' +
-        '<button class="icon-btn" onclick="openDeleteConfirm(\'' + h.id + '\', \'' + escapeHtml(h.name).replace(/'/g, "\\'") + '\')" title="Delete">&#128465;</button>' +
-      '</div>' +
-    '</li>';
-  }).join("");
+  list.innerHTML = habits
+    .map((h) => {
+      const icon = ICON_MAP[h.icon] || ICON_MAP.star;
+      const freqLabel = (h.frequency === "daily" || h.frequency === "weekly")
+        ? h.frequency
+        : h.frequency.split(",").map((d) => d.trim().substring(0, 3)).join(", ");
+
+      return `<div class="habit-card ${h.archived ? "archived" : ""}" data-id="${h.id}">
+        <div class="habit-icon" style="background:${escapeHtml(h.color)}">${icon}</div>
+        <div class="habit-info">
+          <div class="habit-name">${escapeHtml(h.name)}</div>
+          ${h.description ? `<div class="habit-desc">${escapeHtml(h.description)}</div>` : ""}
+          <div class="habit-meta">
+            <span class="habit-badge">${escapeHtml(freqLabel)}</span>
+            ${h.archived ? '<span class="habit-badge">archived</span>' : ""}
+          </div>
+        </div>
+        <div class="habit-actions">
+          <button class="btn-archive" onclick="toggleArchive('${h.id}')" title="${h.archived ? "Unarchive" : "Archive"}">
+            ${h.archived ? "&#128194;" : "&#128230;"}
+          </button>
+          <button class="btn-edit" onclick="openEditModal('${h.id}')" title="Edit">&#9998;</button>
+          <button class="btn-delete" onclick="openDeleteModal('${h.id}')" title="Delete">&#128465;</button>
+        </div>
+      </div>`;
+    })
+    .join("");
 }
 
-// --- Toggle archived ---
-document.getElementById("toggle-archived").addEventListener("click", function () {
-  showArchived = !showArchived;
-  document.getElementById("toggle-archived").textContent = showArchived ? "Hide archived" : "Show archived";
-  loadHabits();
+// Filter checkbox
+document.getElementById("show-archived").addEventListener("change", loadHabits);
+
+// ---- Create/Edit Modal ----
+
+const habitModal = document.getElementById("habit-modal");
+const habitForm = document.getElementById("habit-form");
+const modalTitle = document.getElementById("modal-title");
+const modalSubmit = document.getElementById("modal-submit");
+const frequencySelect = document.getElementById("habit-frequency");
+const customDaysGroup = document.getElementById("custom-days-group");
+
+document.getElementById("add-habit-btn").addEventListener("click", () => {
+  editingHabitId = null;
+  modalTitle.textContent = "New Habit";
+  modalSubmit.textContent = "Create Habit";
+  habitForm.reset();
+  resetFormSelections();
+  frequencySelect.value = "daily";
+  customDaysGroup.classList.add("hidden");
+  habitModal.classList.remove("hidden");
 });
 
-// --- Add habit ---
-document.getElementById("add-habit-btn").addEventListener("click", function () {
-  openHabitFormModal();
+document.getElementById("modal-cancel").addEventListener("click", () => {
+  habitModal.classList.add("hidden");
 });
 
-// --- Modals ---
-function closeModal() {
-  modalRoot.innerHTML = "";
+habitModal.addEventListener("click", (e) => {
+  if (e.target === habitModal) habitModal.classList.add("hidden");
+});
+
+frequencySelect.addEventListener("change", () => {
+  if (frequencySelect.value === "custom") {
+    customDaysGroup.classList.remove("hidden");
+  } else {
+    customDaysGroup.classList.add("hidden");
+  }
+});
+
+// Day toggles
+document.querySelectorAll(".day-toggle").forEach((btn) => {
+  btn.addEventListener("click", () => btn.classList.toggle("selected"));
+});
+
+// Color picker
+document.querySelectorAll(".color-option").forEach((el) => {
+  el.addEventListener("click", () => {
+    document.querySelectorAll(".color-option").forEach((c) => c.classList.remove("selected"));
+    el.classList.add("selected");
+  });
+});
+
+// Icon picker
+document.querySelectorAll(".icon-option").forEach((el) => {
+  el.addEventListener("click", () => {
+    document.querySelectorAll(".icon-option").forEach((c) => c.classList.remove("selected"));
+    el.classList.add("selected");
+  });
+});
+
+function resetFormSelections() {
+  document.querySelectorAll(".color-option").forEach((c) => c.classList.remove("selected"));
+  document.querySelector('.color-option[data-color="#5b4fcf"]').classList.add("selected");
+  document.querySelectorAll(".icon-option").forEach((c) => c.classList.remove("selected"));
+  document.querySelector('.icon-option[data-icon="star"]').classList.add("selected");
+  document.querySelectorAll(".day-toggle").forEach((d) => d.classList.remove("selected"));
 }
 
-function openHabitFormModal(habit) {
-  var isEdit = !!habit;
-  var title = isEdit ? "Edit Habit" : "New Habit";
-  var selectedColor = habit ? habit.color : COLORS[0];
-  var selectedIcon = habit ? habit.icon : ICONS[0].id;
-  var selectedFreq = habit ? habit.frequency : "daily";
+function getFormData() {
+  const name = document.getElementById("habit-name").value.trim();
+  const description = document.getElementById("habit-description").value.trim();
+  const freqValue = frequencySelect.value;
+  const colorEl = document.querySelector(".color-option.selected");
+  const color = colorEl ? colorEl.dataset.color : "#5b4fcf";
+  const iconEl = document.querySelector(".icon-option.selected");
+  const icon = iconEl ? iconEl.dataset.icon : "star";
 
-  var colorSwatches = COLORS.map(function (c) {
-    return '<div class="color-swatch' + (c === selectedColor ? ' selected' : '') + '" data-color="' + c + '" style="background:' + c + '"></div>';
-  }).join("");
+  let frequency = freqValue;
+  if (freqValue === "custom") {
+    const selectedDays = Array.from(document.querySelectorAll(".day-toggle.selected"))
+      .map((d) => d.dataset.day.toLowerCase());
+    if (selectedDays.length === 0) return null;
+    frequency = selectedDays.join(",");
+  }
 
-  var iconOptions = ICONS.map(function (i) {
-    return '<div class="icon-option' + (i.id === selectedIcon ? ' selected' : '') + '" data-icon="' + i.id + '">' + i.emoji + '</div>';
-  }).join("");
+  return { name, description: description || undefined, frequency, color, icon };
+}
 
-  var isCustom = selectedFreq !== "daily" && selectedFreq !== "weekly";
-  var customDays = isCustom ? selectedFreq.split(",") : [];
+habitForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-  var dayToggles = DAYS.map(function (d) {
-    return '<button type="button" class="day-toggle' + (customDays.includes(d.id) ? ' selected' : '') + '" data-day="' + d.id + '">' + d.label + '</button>';
-  }).join("");
+  const formData = getFormData();
+  if (!formData) {
+    alert("Please select at least one day for custom frequency.");
+    return;
+  }
+  if (!formData.name) {
+    alert("Habit name is required.");
+    return;
+  }
 
-  modalRoot.innerHTML =
-    '<div class="modal-overlay" id="modal-overlay">' +
-      '<div class="modal">' +
-        '<h2>' + title + '</h2>' +
-        '<form id="habit-form">' +
-          '<div class="form-group">' +
-            '<label>Name *</label>' +
-            '<input type="text" id="habit-name" value="' + (isEdit ? escapeHtml(habit.name) : '') + '" placeholder="e.g. Morning run" required>' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label>Description</label>' +
-            '<textarea id="habit-desc" placeholder="Optional description">' + (isEdit && habit.description ? escapeHtml(habit.description) : '') + '</textarea>' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label>Frequency</label>' +
-            '<select id="habit-freq">' +
-              '<option value="daily"' + (selectedFreq === "daily" ? ' selected' : '') + '>Daily</option>' +
-              '<option value="weekly"' + (selectedFreq === "weekly" ? ' selected' : '') + '>Weekly</option>' +
-              '<option value="custom"' + (isCustom ? ' selected' : '') + '>Custom days</option>' +
-            '</select>' +
-          '</div>' +
-          '<div class="form-group' + (isCustom ? '' : ' hidden') + '" id="days-group">' +
-            '<label>Select days</label>' +
-            '<div class="days-picker" id="days-picker">' + dayToggles + '</div>' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label>Color</label>' +
-            '<div class="color-options" id="color-picker">' + colorSwatches + '</div>' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label>Icon</label>' +
-            '<div class="icon-options" id="icon-picker">' + iconOptions + '</div>' +
-          '</div>' +
-          '<div id="habit-form-error" class="error-text hidden"></div>' +
-          '<div class="modal-actions">' +
-            '<button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>' +
-            '<button type="submit" class="btn" id="habit-submit-btn">' + (isEdit ? 'Save' : 'Create') + '</button>' +
-          '</div>' +
-        '</form>' +
-      '</div>' +
-    '</div>';
+  modalSubmit.disabled = true;
 
-  // Close on overlay click
-  document.getElementById("modal-overlay").addEventListener("click", function (e) {
-    if (e.target === this) closeModal();
-  });
+  try {
+    const url = editingHabitId ? `${HABITS_API}/${editingHabitId}` : HABITS_API;
+    const method = editingHabitId ? "PUT" : "POST";
 
-  // Color picker
-  document.getElementById("color-picker").addEventListener("click", function (e) {
-    var swatch = e.target.closest(".color-swatch");
-    if (!swatch) return;
-    document.querySelectorAll(".color-swatch").forEach(function (s) { s.classList.remove("selected"); });
-    swatch.classList.add("selected");
-  });
+    const res = await fetch(url, {
+      method,
+      headers: getAuthHeaders(),
+      credentials: "include",
+      body: JSON.stringify(formData),
+    });
 
-  // Icon picker
-  document.getElementById("icon-picker").addEventListener("click", function (e) {
-    var opt = e.target.closest(".icon-option");
-    if (!opt) return;
-    document.querySelectorAll(".icon-option").forEach(function (o) { o.classList.remove("selected"); });
-    opt.classList.add("selected");
-  });
-
-  // Frequency change
-  document.getElementById("habit-freq").addEventListener("change", function (e) {
-    var daysGroup = document.getElementById("days-group");
-    if (e.target.value === "custom") {
-      daysGroup.classList.remove("hidden");
-    } else {
-      daysGroup.classList.add("hidden");
-    }
-  });
-
-  // Day toggles
-  document.getElementById("days-picker").addEventListener("click", function (e) {
-    var toggle = e.target.closest(".day-toggle");
-    if (!toggle) return;
-    toggle.classList.toggle("selected");
-  });
-
-  // Form submit
-  document.getElementById("habit-form").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    var errEl = document.getElementById("habit-form-error");
-    errEl.classList.add("hidden");
-
-    var name = document.getElementById("habit-name").value.trim();
-    var description = document.getElementById("habit-desc").value.trim();
-    var freqSelect = document.getElementById("habit-freq").value;
-    var colorEl = document.querySelector(".color-swatch.selected");
-    var color = colorEl ? colorEl.dataset.color : COLORS[0];
-    var iconEl = document.querySelector(".icon-option.selected");
-    var icon = iconEl ? iconEl.dataset.icon : ICONS[0].id;
-
-    if (!name) {
-      errEl.textContent = "Name is required";
-      errEl.classList.remove("hidden");
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || "Failed to save habit");
       return;
     }
 
-    var frequency = freqSelect;
-    if (freqSelect === "custom") {
-      var selectedDays = Array.from(document.querySelectorAll(".day-toggle.selected")).map(function (d) { return d.dataset.day; });
-      if (selectedDays.length === 0) {
-        errEl.textContent = "Select at least one day";
-        errEl.classList.remove("hidden");
-        return;
-      }
-      frequency = selectedDays.join(",");
-    }
+    habitModal.classList.add("hidden");
+    loadHabits();
+  } catch {
+    alert("Network error. Please try again.");
+  } finally {
+    modalSubmit.disabled = false;
+  }
+});
 
-    var btn = document.getElementById("habit-submit-btn");
-    btn.disabled = true;
-    btn.textContent = "Saving...";
+// Open edit modal
+function openEditModal(id) {
+  const habit = habits.find((h) => h.id === id);
+  if (!habit) return;
 
-    try {
-      if (isEdit) {
-        await updateHabit(habit.id, { name: name, description: description, frequency: frequency, color: color, icon: icon });
-      } else {
-        await createHabit({ name: name, description: description, frequency: frequency, color: color, icon: icon });
-      }
-      closeModal();
-      loadHabits();
-    } catch (err) {
-      errEl.textContent = err.message;
-      errEl.classList.remove("hidden");
-    } finally {
-      btn.disabled = false;
-      btn.textContent = isEdit ? "Save" : "Create";
-    }
-  });
+  editingHabitId = id;
+  modalTitle.textContent = "Edit Habit";
+  modalSubmit.textContent = "Save Changes";
+
+  document.getElementById("habit-name").value = habit.name;
+  document.getElementById("habit-description").value = habit.description || "";
+
+  const isCustom = habit.frequency !== "daily" && habit.frequency !== "weekly";
+  if (isCustom) {
+    frequencySelect.value = "custom";
+    customDaysGroup.classList.remove("hidden");
+    document.querySelectorAll(".day-toggle").forEach((d) => d.classList.remove("selected"));
+    const days = habit.frequency.split(",").map((d) => d.trim().toLowerCase());
+    days.forEach((day) => {
+      const btn = document.querySelector(`.day-toggle[data-day="${day.charAt(0).toUpperCase() + day.slice(1)}"]`);
+      if (btn) btn.classList.add("selected");
+    });
+  } else {
+    frequencySelect.value = habit.frequency;
+    customDaysGroup.classList.add("hidden");
+    document.querySelectorAll(".day-toggle").forEach((d) => d.classList.remove("selected"));
+  }
+
+  document.querySelectorAll(".color-option").forEach((c) => c.classList.remove("selected"));
+  const colorMatch = document.querySelector(`.color-option[data-color="${habit.color}"]`);
+  if (colorMatch) colorMatch.classList.add("selected");
+  else document.querySelector('.color-option[data-color="#5b4fcf"]').classList.add("selected");
+
+  document.querySelectorAll(".icon-option").forEach((c) => c.classList.remove("selected"));
+  const iconMatch = document.querySelector(`.icon-option[data-icon="${habit.icon}"]`);
+  if (iconMatch) iconMatch.classList.add("selected");
+  else document.querySelector('.icon-option[data-icon="star"]').classList.add("selected");
+
+  habitModal.classList.remove("hidden");
 }
 
-window.openEditModal = function (id) {
-  var habit = habitsCache.find(function (h) { return h.id === id; });
-  if (habit) openHabitFormModal(habit);
-};
+// ---- Archive ----
 
-window.toggleArchive = async function (id, archive) {
+async function toggleArchive(id) {
+  const habit = habits.find((h) => h.id === id);
+  if (!habit) return;
+
   try {
-    await updateHabit(id, { archived: archive });
-    loadHabits();
-  } catch (err) {
-    console.error("Archive error:", err);
+    const res = await fetch(`${HABITS_API}/${id}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      credentials: "include",
+      body: JSON.stringify({ archived: !habit.archived }),
+    });
+    if (res.ok) loadHabits();
+  } catch {
+    alert("Failed to update habit.");
   }
-};
+}
 
-window.openDeleteConfirm = function (id, name) {
-  modalRoot.innerHTML =
-    '<div class="modal-overlay" id="modal-overlay">' +
-      '<div class="modal">' +
-        '<h2>Delete Habit</h2>' +
-        '<p class="confirm-text">Are you sure you want to delete <strong>' + name + '</strong>? This cannot be undone.</p>' +
-        '<div class="modal-actions">' +
-          '<button class="btn btn-outline" onclick="closeModal()">Cancel</button>' +
-          '<button class="btn btn-danger" id="confirm-delete-btn">Delete</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
+// ---- Delete Modal ----
 
-  document.getElementById("modal-overlay").addEventListener("click", function (e) {
-    if (e.target === this) closeModal();
-  });
+const deleteModal = document.getElementById("delete-modal");
 
-  document.getElementById("confirm-delete-btn").addEventListener("click", async function () {
-    var btn = document.getElementById("confirm-delete-btn");
-    btn.disabled = true;
-    btn.textContent = "Deleting...";
-    try {
-      await deleteHabit(id);
-      closeModal();
-      loadHabits();
-    } catch (err) {
-      console.error("Delete error:", err);
-      btn.disabled = false;
-      btn.textContent = "Delete";
-    }
-  });
-};
+function openDeleteModal(id) {
+  const habit = habits.find((h) => h.id === id);
+  if (!habit) return;
 
-// --- Session check ---
-async function checkSession() {
-  var token = getToken();
-  if (!token) return;
+  deletingHabitId = id;
+  document.getElementById("delete-habit-name").textContent = habit.name;
+  deleteModal.classList.remove("hidden");
+}
+
+document.getElementById("delete-cancel").addEventListener("click", () => {
+  deleteModal.classList.add("hidden");
+  deletingHabitId = null;
+});
+
+deleteModal.addEventListener("click", (e) => {
+  if (e.target === deleteModal) {
+    deleteModal.classList.add("hidden");
+    deletingHabitId = null;
+  }
+});
+
+document.getElementById("delete-confirm").addEventListener("click", async () => {
+  if (!deletingHabitId) return;
+
+  const btn = document.getElementById("delete-confirm");
+  btn.disabled = true;
 
   try {
-    var res = await fetch(AUTH_API + "/me", {
-      headers: { Authorization: "Bearer " + token },
+    const res = await fetch(`${HABITS_API}/${deletingHabitId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
       credentials: "include",
     });
     if (res.ok) {
-      var data = await res.json();
-      showDashboard(data.user);
+      deleteModal.classList.add("hidden");
+      deletingHabitId = null;
+      loadHabits();
     } else {
-      localStorage.removeItem("token");
+      const data = await res.json();
+      alert(data.error || "Failed to delete habit");
     }
-  } catch (err) {
-    // Ignore - show login form
+  } catch {
+    alert("Network error. Please try again.");
+  } finally {
+    btn.disabled = false;
   }
-}
+});
 
+// ---- Init ----
 checkSession();

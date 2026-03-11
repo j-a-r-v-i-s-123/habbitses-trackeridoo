@@ -109,7 +109,6 @@ router.put("/:id", async (req: AuthRequest, res: Response): Promise<void> => {
     if (icon !== undefined) data.icon = icon;
     if (archived !== undefined) {
       data.archived = archived;
-      data.archivedAt = archived ? new Date() : null;
     }
 
     const habit = await prisma.habit.update({ where: { id }, data });

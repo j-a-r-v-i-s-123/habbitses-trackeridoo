@@ -23,7 +23,6 @@ model Habit {
   name        String
   description String?
   frequency   String   @default("daily")
-  customDays  String?
   color       String   @default("#5b4fcf")
   icon        String   @default("star")
   archived    Boolean  @default(false)
