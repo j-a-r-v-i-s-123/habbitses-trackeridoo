@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import rateLimit from "express-rate-limit";
 import prisma from "../db";
 import { authenticateToken, AuthRequest, JWT_SECRET } from "../middleware/auth";
 
@@ -9,8 +10,27 @@ const router = Router();
 const SALT_ROUNDS = 10;
 const TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
+// Rate limiting for auth endpoints
+const isTest = process.env.NODE_ENV === "test";
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isTest ? 1000 : 10, // effectively unlimited in test
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many attempts, please try again later" },
+});
+
+const strictAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isTest ? 1000 : 5, // effectively unlimited in test
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts, please try again later" },
+});
+
 // POST /api/auth/register
-router.post("/register", async (req: Request, res: Response): Promise<void> => {
+router.post("/register", authLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
 
@@ -63,7 +83,7 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
 });
 
 // POST /api/auth/login
-router.post("/login", async (req: Request, res: Response): Promise<void> => {
+router.post("/login", strictAuthLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
@@ -175,6 +195,7 @@ router.put(
 // PUT /api/auth/password
 router.put(
   "/password",
+  strictAuthLimiter,
   authenticateToken,
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
