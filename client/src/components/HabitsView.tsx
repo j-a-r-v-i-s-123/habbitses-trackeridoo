@@ -24,6 +24,29 @@ interface HabitFormData {
   icon: string;
 }
 
+const DAYS = [
+  { key: "mon", label: "M" },
+  { key: "tue", label: "T" },
+  { key: "wed", label: "W" },
+  { key: "thu", label: "T" },
+  { key: "fri", label: "F" },
+  { key: "sat", label: "S" },
+  { key: "sun", label: "S" },
+];
+
+type FrequencyMode = "daily" | "weekly" | "custom";
+
+function getFrequencyMode(frequency: string): FrequencyMode {
+  if (frequency === "daily") return "daily";
+  if (frequency === "weekly") return "weekly";
+  return "custom";
+}
+
+function getSelectedDays(frequency: string): string[] {
+  if (frequency === "daily" || frequency === "weekly") return [];
+  return frequency.split(",").filter(Boolean);
+}
+
 const emptyForm: HabitFormData = {
   name: "",
   description: "",
@@ -79,6 +102,12 @@ export default function HabitsView() {
     e.preventDefault();
     if (!form.name.trim()) {
       setError("Name is required");
+      return;
+    }
+
+    const mode = getFrequencyMode(form.frequency);
+    if (mode === "custom" && getSelectedDays(form.frequency).length === 0) {
+      setError("Please select at least one day");
       return;
     }
 
@@ -217,18 +246,61 @@ export default function HabitsView() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Frequency
                 </label>
-                <select
-                  value={form.frequency}
-                  onChange={(e) => setForm((f) => ({ ...f, frequency: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="mon,wed,fri">Mon / Wed / Fri</option>
-                  <option value="tue,thu">Tue / Thu</option>
-                  <option value="mon,tue,wed,thu,fri">Weekdays</option>
-                  <option value="sat,sun">Weekends</option>
-                </select>
+                <div className="flex gap-2 mb-2">
+                  {(["daily", "weekly", "custom"] as FrequencyMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => {
+                        if (mode === "daily" || mode === "weekly") {
+                          setForm((f) => ({ ...f, frequency: mode }));
+                        } else {
+                          setForm((f) => ({
+                            ...f,
+                            frequency: getFrequencyMode(f.frequency) === "custom" ? f.frequency : "mon,wed,fri",
+                          }));
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        getFrequencyMode(form.frequency) === mode
+                          ? "bg-primary-600 text-white"
+                          : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      }`}
+                    >
+                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                {getFrequencyMode(form.frequency) === "custom" && (
+                  <div className="flex gap-1.5">
+                    {DAYS.map((day, i) => {
+                      const selected = getSelectedDays(form.frequency).includes(day.key);
+                      return (
+                        <button
+                          key={day.key + i}
+                          type="button"
+                          onClick={() => {
+                            const current = getSelectedDays(form.frequency);
+                            const next = selected
+                              ? current.filter((d) => d !== day.key)
+                              : [...current, day.key];
+                            const ordered = DAYS.map((d) => d.key).filter((k) => next.includes(k));
+                            if (ordered.length > 0) {
+                              setForm((f) => ({ ...f, frequency: ordered.join(",") }));
+                            }
+                          }}
+                          className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${
+                            selected
+                              ? "bg-primary-600 text-white"
+                              : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Icon */}
