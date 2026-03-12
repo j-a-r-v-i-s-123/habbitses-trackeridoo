@@ -12,7 +12,12 @@ import exportRoutes from "./routes/export";
 
 const app = express();
 
-const corsOrigin = process.env.CORS_ORIGIN || true; // restrict in production via CORS_ORIGIN env var
+const isProduction = process.env.NODE_ENV === "production";
+const corsOrigin = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",")
+  : isProduction
+    ? false
+    : true;
 app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
