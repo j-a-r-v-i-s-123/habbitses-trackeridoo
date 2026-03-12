@@ -82,6 +82,16 @@ export const api = {
     }),
   me: () => request<{ user: { id: string; email: string; name: string | null } }>("/auth/me"),
   logout: () => request("/auth/logout", { method: "POST" }),
+  forgotPassword: (email: string) =>
+    request<{ message: string }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    }),
 
   // Habits
   getHabits: () => request<{ habits: Habit[] }>("/habits"),

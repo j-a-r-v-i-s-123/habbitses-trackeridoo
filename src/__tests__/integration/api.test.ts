@@ -7,12 +7,14 @@ let userId: string;
 
 beforeAll(async () => {
   // Clean up test data
+  await prisma.passwordReset.deleteMany();
   await prisma.checkIn.deleteMany();
   await prisma.habit.deleteMany();
   await prisma.user.deleteMany();
 });
 
 afterAll(async () => {
+  await prisma.passwordReset.deleteMany();
   await prisma.checkIn.deleteMany();
   await prisma.habit.deleteMany();
   await prisma.user.deleteMany();
@@ -424,5 +426,111 @@ describe("Account Management API", () => {
       .post("/api/auth/login")
       .send({ email: "todelete@example.com", password: "password123" });
     expect(loginRes.status).toBe(401);
+  });
+});
+
+describe("Password Reset API", () => {
+  test("POST /api/auth/forgot-password returns success for any email", async () => {
+    const res = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ email: "nonexistent@example.com" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain("reset link has been sent");
+  });
+
+  test("POST /api/auth/forgot-password requires email", async () => {
+    const res = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  test("POST /api/auth/forgot-password creates reset token for valid user", async () => {
+    const res = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ email: "test@example.com" });
+
+    expect(res.status).toBe(200);
+
+    // Verify token was created in DB
+    const resets = await prisma.passwordReset.findMany({
+      where: { user: { email: "test@example.com" }, used: false },
+    });
+    expect(resets.length).toBe(1);
+    expect(resets[0].expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  test("POST /api/auth/reset-password resets password with valid token", async () => {
+    // Get the token created in previous test
+    const resetRecord = await prisma.passwordReset.findFirst({
+      where: { user: { email: "test@example.com" }, used: false },
+    });
+    expect(resetRecord).not.toBeNull();
+
+    const res = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: resetRecord!.token, newPassword: "resetpassword123" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain("reset successfully");
+
+    // Verify new password works
+    const loginRes = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "test@example.com", password: "resetpassword123" });
+    expect(loginRes.status).toBe(200);
+
+    // Reset back for other tests
+    token = loginRes.body.token;
+    await request(app)
+      .put("/api/auth/password")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ currentPassword: "resetpassword123", newPassword: "password123" });
+  });
+
+  test("POST /api/auth/reset-password rejects expired token", async () => {
+    // Create an expired token
+    const expired = await prisma.passwordReset.create({
+      data: {
+        token: "expired-token-123",
+        expiresAt: new Date(Date.now() - 1000), // already expired
+        userId: userId,
+      },
+    });
+
+    const res = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: expired.token, newPassword: "newpassword123" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Invalid or expired");
+  });
+
+  test("POST /api/auth/reset-password rejects used token", async () => {
+    const used = await prisma.passwordReset.create({
+      data: {
+        token: "used-token-123",
+        expiresAt: new Date(Date.now() + 3600000),
+        userId: userId,
+        used: true,
+      },
+    });
+
+    const res = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: used.token, newPassword: "newpassword123" });
+
+    expect(res.status).toBe(400);
+  });
+
+  test("POST /api/auth/reset-password validates password length", async () => {
+    const res = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: "any-token", newPassword: "short" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("8 characters");
   });
 });

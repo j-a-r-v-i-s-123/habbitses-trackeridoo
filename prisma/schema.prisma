@@ -17,6 +17,20 @@ model User {
   updatedAt DateTime @updatedAt
   habits    Habit[]
   checkIns  CheckIn[]
+  passwordResets PasswordReset[]
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
 }
 
 model Habit {
