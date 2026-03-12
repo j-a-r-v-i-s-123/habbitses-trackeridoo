@@ -328,3 +328,101 @@ describe("Analytics API", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("Account Management API", () => {
+  test("PUT /api/auth/profile updates user profile", async () => {
+    const res = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Updated Name" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.name).toBe("Updated Name");
+  });
+
+  test("PUT /api/auth/profile rejects duplicate email", async () => {
+    // Register another user
+    await request(app)
+      .post("/api/auth/register")
+      .send({ email: "other@example.com", password: "password123" });
+
+    const res = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ email: "other@example.com" });
+
+    expect(res.status).toBe(409);
+  });
+
+  test("PUT /api/auth/password changes password", async () => {
+    const res = await request(app)
+      .put("/api/auth/password")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ currentPassword: "password123", newPassword: "newpassword123" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("Password updated successfully");
+
+    // Verify new password works
+    const loginRes = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "test@example.com", password: "newpassword123" });
+    expect(loginRes.status).toBe(200);
+
+    // Change back for other tests
+    await request(app)
+      .put("/api/auth/password")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ currentPassword: "newpassword123", newPassword: "password123" });
+  });
+
+  test("PUT /api/auth/password rejects wrong current password", async () => {
+    const res = await request(app)
+      .put("/api/auth/password")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ currentPassword: "wrongpassword", newPassword: "newpassword123" });
+
+    expect(res.status).toBe(401);
+  });
+
+  test("PUT /api/auth/password validates new password length", async () => {
+    const res = await request(app)
+      .put("/api/auth/password")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ currentPassword: "password123", newPassword: "short" });
+
+    expect(res.status).toBe(400);
+  });
+
+  test("DELETE /api/auth/account rejects wrong password", async () => {
+    const res = await request(app)
+      .delete("/api/auth/account")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ password: "wrongpassword" });
+
+    expect(res.status).toBe(401);
+  });
+
+  test("DELETE /api/auth/account deletes user account", async () => {
+    // Create a disposable user
+    const regRes = await request(app)
+      .post("/api/auth/register")
+      .send({ email: "todelete@example.com", password: "password123" });
+
+    const deleteToken = regRes.body.token;
+
+    const res = await request(app)
+      .delete("/api/auth/account")
+      .set("Authorization", `Bearer ${deleteToken}`)
+      .send({ password: "password123" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("Account deleted successfully");
+
+    // Verify account is gone
+    const loginRes = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "todelete@example.com", password: "password123" });
+    expect(loginRes.status).toBe(401);
+  });
+});

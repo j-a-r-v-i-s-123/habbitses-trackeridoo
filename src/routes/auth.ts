@@ -135,4 +135,122 @@ router.get(
   }
 );
 
+// PUT /api/auth/profile
+router.put(
+  "/profile",
+  authenticateToken,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, email } = req.body;
+
+      const data: Record<string, string> = {};
+      if (name !== undefined) data.name = name?.trim() || null as unknown as string;
+      if (email !== undefined) {
+        if (typeof email !== "string" || !email.includes("@")) {
+          res.status(400).json({ error: "Invalid email format" });
+          return;
+        }
+        const existing = await prisma.user.findUnique({ where: { email } });
+        if (existing && existing.id !== req.userId) {
+          res.status(409).json({ error: "Email already in use" });
+          return;
+        }
+        data.email = email;
+      }
+
+      const user = await prisma.user.update({
+        where: { id: req.userId },
+        data,
+        select: { id: true, email: true, name: true },
+      });
+
+      res.json({ user });
+    } catch (err) {
+      console.error("Profile update error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// PUT /api/auth/password
+router.put(
+  "/password",
+  authenticateToken,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ error: "Current and new password are required" });
+        return;
+      }
+
+      if (typeof newPassword !== "string" || newPassword.length < 8) {
+        res.status(400).json({ error: "New password must be at least 8 characters" });
+        return;
+      }
+
+      const user = await prisma.user.findUnique({ where: { id: req.userId } });
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      const valid = await bcrypt.compare(currentPassword, user.password);
+      if (!valid) {
+        res.status(401).json({ error: "Current password is incorrect" });
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+      await prisma.user.update({
+        where: { id: req.userId },
+        data: { password: hashedPassword },
+      });
+
+      res.json({ message: "Password updated successfully" });
+    } catch (err) {
+      console.error("Password change error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// DELETE /api/auth/account
+router.delete(
+  "/account",
+  authenticateToken,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { password } = req.body;
+
+      if (!password) {
+        res.status(400).json({ error: "Password is required to delete account" });
+        return;
+      }
+
+      const user = await prisma.user.findUnique({ where: { id: req.userId } });
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      const valid = await bcrypt.compare(password, user.password);
+      if (!valid) {
+        res.status(401).json({ error: "Password is incorrect" });
+        return;
+      }
+
+      // Delete all user data (cascading deletes handle habits and check-ins)
+      await prisma.user.delete({ where: { id: req.userId } });
+
+      res.clearCookie("token");
+      res.json({ message: "Account deleted successfully" });
+    } catch (err) {
+      console.error("Delete account error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 export default router;

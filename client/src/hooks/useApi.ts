@@ -85,6 +85,18 @@ export const api = {
 
   // Habits
   getHabits: () => request<{ habits: Habit[] }>("/habits"),
+  createHabit: (data: { name: string; description?: string; frequency?: string; color?: string; icon?: string }) =>
+    request<{ habit: Habit }>("/habits", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateHabit: (id: string, data: Partial<Pick<Habit, "name" | "description" | "frequency" | "color" | "icon" | "archived">>) =>
+    request<{ habit: Habit }>(`/habits/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  deleteHabit: (id: string) =>
+    request<{ message: string }>(`/habits/${id}`, { method: "DELETE" }),
 
   // Streaks
   getStreaks: (habitId: string) =>
@@ -104,6 +116,23 @@ export const api = {
   // Analytics
   getAnalyticsOverview: () =>
     request<AnalyticsOverview>("/analytics/overview"),
+
+  // Account
+  updateProfile: (data: { name?: string; email?: string }) =>
+    request<{ user: { id: string; email: string; name: string | null } }>("/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ message: string }>("/auth/password", {
+      method: "PUT",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  deleteAccount: (password: string) =>
+    request<{ message: string }>("/auth/account", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    }),
 
   // Reminders
   getReminders: () =>
