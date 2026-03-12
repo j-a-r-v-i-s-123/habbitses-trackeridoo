@@ -55,6 +55,24 @@ const emptyForm: HabitFormData = {
   icon: "star",
 };
 
+interface HabitTemplate {
+  label: string;
+  form: HabitFormData;
+}
+
+const HABIT_TEMPLATES: HabitTemplate[] = [
+  { label: "Exercise", form: { name: "Exercise", description: "Get moving every day", frequency: "daily", color: "#e74c3c", icon: "run" } },
+  { label: "Meditation", form: { name: "Meditation", description: "Mindfulness practice", frequency: "daily", color: "#9b59b6", icon: "meditate" } },
+  { label: "Reading", form: { name: "Reading", description: "Read for at least 20 minutes", frequency: "daily", color: "#f39c12", icon: "book" } },
+  { label: "Drink Water", form: { name: "Drink Water", description: "Stay hydrated — 8 glasses a day", frequency: "daily", color: "#3498db", icon: "water" } },
+  { label: "Sleep 8hrs", form: { name: "Sleep 8 Hours", description: "Get a full night's rest", frequency: "daily", color: "#00bcd4", icon: "sleep" } },
+  { label: "Workout", form: { name: "Gym Workout", description: "Strength training session", frequency: "mon,wed,fri", color: "#e67e22", icon: "gym" } },
+  { label: "Journaling", form: { name: "Journaling", description: "Write down your thoughts", frequency: "daily", color: "#1abc9c", icon: "writing" } },
+  { label: "Healthy Eating", form: { name: "Healthy Eating", description: "Eat balanced meals", frequency: "daily", color: "#2ecc71", icon: "food" } },
+  { label: "Learn Something", form: { name: "Learn Something New", description: "Spend time learning a new skill", frequency: "daily", color: "#e91e63", icon: "brain" } },
+  { label: "Practice Music", form: { name: "Practice Music", description: "Practice an instrument", frequency: "daily", color: "#5b4fcf", icon: "music" } },
+];
+
 export default function HabitsView() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +82,7 @@ export default function HabitsView() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
     api.getHabits()
@@ -76,7 +95,18 @@ export default function HabitsView() {
     setForm(emptyForm);
     setEditingId(null);
     setError("");
+    setShowTemplates(true);
     setShowForm(true);
+  }
+
+  function selectTemplate(template: HabitTemplate) {
+    setForm({ ...template.form });
+    setShowTemplates(false);
+  }
+
+  function startFromScratch() {
+    setForm(emptyForm);
+    setShowTemplates(false);
   }
 
   function openEdit(habit: Habit) {
@@ -94,6 +124,7 @@ export default function HabitsView() {
 
   function closeForm() {
     setShowForm(false);
+    setShowTemplates(false);
     setEditingId(null);
     setError("");
   }
@@ -193,7 +224,7 @@ export default function HabitsView() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {editingId ? "Edit Habit" : "New Habit"}
+                {editingId ? "Edit Habit" : showTemplates ? "Choose a Template" : "New Habit"}
               </h3>
               <button
                 onClick={closeForm}
@@ -205,7 +236,41 @@ export default function HabitsView() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {/* Template Picker */}
+            {showTemplates && !editingId && (
+              <div className="p-6 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {HABIT_TEMPLATES.map((t) => (
+                    <button
+                      key={t.label}
+                      type="button"
+                      onClick={() => selectTemplate(t)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-primary-400 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors text-left"
+                    >
+                      <span
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"
+                        style={{ backgroundColor: t.form.color + "20" }}
+                      >
+                        {ICONS[t.form.icon]}
+                      </span>
+                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                        {t.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={startFromScratch}
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-medium text-sm transition-colors"
+                >
+                  Start from scratch
+                </button>
+              </div>
+            )}
+
+            {/* Habit Form */}
+            {!showTemplates && <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {error && (
                 <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
                   {error}
@@ -363,7 +428,7 @@ export default function HabitsView() {
                   {saving ? "Saving..." : editingId ? "Save Changes" : "Create Habit"}
                 </button>
               </div>
-            </form>
+            </form>}
           </div>
         </div>
       )}
