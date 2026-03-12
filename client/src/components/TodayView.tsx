@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, Habit, CheckIn, Streaks } from "@/hooks/useApi";
+import FeatureTooltip, { useDismissedTooltips } from "@/components/FeatureTooltip";
 
 function formatDate(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -41,6 +42,8 @@ export default function TodayView() {
   const [error, setError] = useState("");
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
   const [noteTexts, setNoteTexts] = useState<Record<string, string>>({});
+  const { shouldShow, dismiss } = useDismissedTooltips();
+  const onboardingDone = localStorage.getItem("onboarding_completed") === "true";
 
   const loadData = useCallback(async () => {
     try {
@@ -265,21 +268,29 @@ export default function TodayView() {
                           <span className="text-xs text-red-400 dark:text-red-500">Streak unavailable</span>
                         </div>
                       ) : habitStreaks ? (
-                        <div className="flex gap-3 mt-1">
-                          {habitStreaks.currentStreak > 0 && (
-                            <span className="text-xs font-medium text-orange-500">
-                              {habitStreaks.currentStreak}d streak
-                            </span>
-                          )}
-                          {habitStreaks.bestStreak > 1 && (
+                        <FeatureTooltip
+                          id="tip-streaks"
+                          content="Your streak count shows how many days in a row you've completed this habit. Keep it going!"
+                          position="bottom"
+                          show={onboardingDone && habits.indexOf(habit) === 0 && shouldShow("tip-streaks")}
+                          onDismiss={dismiss}
+                        >
+                          <div className="flex gap-3 mt-1">
+                            {habitStreaks.currentStreak > 0 && (
+                              <span className="text-xs font-medium text-orange-500">
+                                {habitStreaks.currentStreak}d streak
+                              </span>
+                            )}
+                            {habitStreaks.bestStreak > 1 && (
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
+                                Best: {habitStreaks.bestStreak}d
+                              </span>
+                            )}
                             <span className="text-xs text-gray-400 dark:text-gray-500">
-                              Best: {habitStreaks.bestStreak}d
+                              {habitStreaks.completionRate}%
                             </span>
-                          )}
-                          <span className="text-xs text-gray-400 dark:text-gray-500">
-                            {habitStreaks.completionRate}%
-                          </span>
-                        </div>
+                          </div>
+                        </FeatureTooltip>
                       ) : null}
                     </div>
 
@@ -321,21 +332,29 @@ export default function TodayView() {
                       </button>
 
                       {/* Skip Button */}
-                      <button
-                        onClick={() => toggleStatus(habit, "skipped")}
-                        className={`
-                          w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
-                          ${isSkipped
-                            ? "bg-gray-400 text-white shadow-md shadow-gray-200 dark:shadow-gray-900"
-                            : "bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-600 dark:hover:text-gray-300"
-                          }
-                        `}
-                        aria-label={`Skip ${habit.name}`}
+                      <FeatureTooltip
+                        id="tip-skip"
+                        content="Use Skip for planned rest days. Skipped days won't break your streak!"
+                        position="left"
+                        show={onboardingDone && habits.indexOf(habit) === 0 && shouldShow("tip-skip")}
+                        onDismiss={dismiss}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                        </svg>
-                      </button>
+                        <button
+                          onClick={() => toggleStatus(habit, "skipped")}
+                          className={`
+                            w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
+                            ${isSkipped
+                              ? "bg-gray-400 text-white shadow-md shadow-gray-200 dark:shadow-gray-900"
+                              : "bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-gray-600 dark:hover:text-gray-300"
+                            }
+                          `}
+                          aria-label={`Skip ${habit.name}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </FeatureTooltip>
                     </div>
                   </div>
 

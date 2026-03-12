@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext, type ReactNode } from "react";
+import FeatureTooltip, { useDismissedTooltips } from "@/components/FeatureTooltip";
 
 type Page = "today" | "dashboard" | "habits" | "settings";
 
@@ -65,6 +66,8 @@ interface LayoutProps {
 
 export default function Layout({ page, onNavigate, onLogout, children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { shouldShow, dismiss } = useDismissedTooltips();
+  const onboardingDone = localStorage.getItem("onboarding_completed") === "true";
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("theme");
@@ -141,7 +144,7 @@ export default function Layout({ page, onNavigate, onLogout, children }: LayoutP
             <nav className="flex-1 px-3 py-4 space-y-1">
               {NAV_ITEMS.map((item) => {
                 const active = page === item.id;
-                return (
+                const navButton = (
                   <button
                     key={item.id}
                     onClick={() => handleNav(item.id)}
@@ -157,6 +160,23 @@ export default function Layout({ page, onNavigate, onLogout, children }: LayoutP
                     {item.label}
                   </button>
                 );
+
+                if (item.id === "dashboard") {
+                  return (
+                    <FeatureTooltip
+                      key={item.id}
+                      id="tip-dashboard"
+                      content="Check your Dashboard for heatmaps, completion charts, and streak stats!"
+                      position="right"
+                      show={onboardingDone && shouldShow("tip-dashboard")}
+                      onDismiss={dismiss}
+                    >
+                      {navButton}
+                    </FeatureTooltip>
+                  );
+                }
+
+                return <div key={item.id}>{navButton}</div>;
               })}
             </nav>
 

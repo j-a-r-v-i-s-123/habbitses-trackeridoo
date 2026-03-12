@@ -7,6 +7,7 @@ import HabitsView from "@/components/HabitsView";
 import SettingsView from "@/components/SettingsView";
 import Layout from "@/components/Layout";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import Onboarding from "@/components/Onboarding";
 import { ToastProvider, useToast } from "@/components/Toast";
 
 type Page = "today" | "dashboard" | "habits" | "settings";
@@ -14,6 +15,7 @@ type Page = "today" | "dashboard" | "habits" | "settings";
 function AppContent() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [page, setPage] = useState<Page>("today");
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { toast } = useToast();
 
   // Wire up API toast notifications
@@ -23,7 +25,12 @@ function AppContent() {
   }, [toast]);
 
   useEffect(() => {
-    api.me().then(() => setAuthed(true)).catch(() => setAuthed(false));
+    api.me().then(() => {
+      setAuthed(true);
+      if (!localStorage.getItem("onboarding_completed")) {
+        setShowOnboarding(true);
+      }
+    }).catch(() => setAuthed(false));
   }, []);
 
   async function handleLogout() {
@@ -45,11 +52,19 @@ function AppContent() {
   }
 
   if (!authed) {
-    return <AuthForm onAuth={() => setAuthed(true)} />;
+    return <AuthForm onAuth={() => {
+      setAuthed(true);
+      if (!localStorage.getItem("onboarding_completed")) {
+        setShowOnboarding(true);
+      }
+    }} />;
   }
 
   return (
     <Layout page={page} onNavigate={setPage} onLogout={handleLogout}>
+      {showOnboarding && (
+        <Onboarding onComplete={() => setShowOnboarding(false)} />
+      )}
       {page === "dashboard" && (
         <ErrorBoundary key="dashboard" fallbackTitle="Dashboard failed to load">
           <Dashboard />
