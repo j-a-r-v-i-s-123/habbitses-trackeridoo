@@ -1,5 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { api, Habit } from "@/hooks/useApi";
+
+type FilterMode = "all" | "active" | "archived";
+type SortOption = "name" | "frequency" | "created" | "newest";
 
 const ICONS: Record<string, string> = {
   star: "\u2B50", heart: "\u2764\uFE0F", fire: "\uD83D\uDD25",
@@ -85,6 +88,50 @@ export default function HabitsView() {
   const [showTemplates, setShowTemplates] = useState(false);
   const [archiving, setArchiving] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [sortOption, setSortOption] = useState<SortOption>("newest");
+
+  const activeCount = useMemo(() => habits.filter((h) => !h.archived).length, [habits]);
+  const archivedCount = useMemo(() => habits.filter((h) => h.archived).length, [habits]);
+
+  const filteredHabits = useMemo(() => {
+    let result = habits;
+
+    // Filter by archive status
+    if (filterMode === "active") result = result.filter((h) => !h.archived);
+    else if (filterMode === "archived") result = result.filter((h) => h.archived);
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (h) =>
+          h.name.toLowerCase().includes(q) ||
+          (h.description && h.description.toLowerCase().includes(q))
+      );
+    }
+
+    // Sort
+    const sorted = [...result];
+    switch (sortOption) {
+      case "name":
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "frequency":
+        sorted.sort((a, b) => a.frequency.localeCompare(b.frequency));
+        break;
+      case "created":
+        // oldest first (default API order)
+        break;
+      case "newest":
+        // reverse of creation order
+        sorted.reverse();
+        break;
+    }
+
+    return sorted;
+  }, [habits, searchQuery, filterMode, sortOption]);
 
   useEffect(() => {
     api.getHabits()
@@ -212,7 +259,7 @@ export default function HabitsView() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           All Habits
         </h2>
@@ -226,6 +273,73 @@ export default function HabitsView() {
           New Habit
         </button>
       </div>
+
+      {/* Search, Filter & Sort Controls */}
+      {habits.length > 0 && (
+        <div className="space-y-3 mb-4">
+          {/* Search */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search habits..."
+              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Filter & Sort Row */}
+          <div className="flex items-center justify-between gap-3">
+            {/* Filter Toggles */}
+            <div className="flex gap-1">
+              {(["all", "active", "archived"] as FilterMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setFilterMode(mode)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    filterMode === mode
+                      ? "bg-primary-600 text-white"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                  }`}
+                >
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort Dropdown */}
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as SortOption)}
+              className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option value="newest">Newest First</option>
+              <option value="created">Oldest First</option>
+              <option value="name">Name A-Z</option>
+              <option value="frequency">Frequency</option>
+            </select>
+          </div>
+
+          {/* Count Summary */}
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {activeCount} active{archivedCount > 0 && `, ${archivedCount} archived`}
+            {searchQuery && ` \u2014 ${filteredHabits.length} matching "${searchQuery}"`}
+          </p>
+        </div>
+      )}
 
       {/* Create/Edit Modal */}
       {showForm && (
@@ -459,9 +573,14 @@ export default function HabitsView() {
             Create First Habit
           </button>
         </div>
+      ) : filteredHabits.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500 dark:text-gray-400 mb-1">No habits match your filters</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">Try adjusting your search or filter criteria</p>
+        </div>
       ) : (
         <div className="space-y-3">
-          {habits.map((habit) => (
+          {filteredHabits.map((habit) => (
             <div
               key={habit.id}
               className={`bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border transition-opacity ${
