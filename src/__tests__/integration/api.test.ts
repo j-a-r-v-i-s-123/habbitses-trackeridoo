@@ -534,3 +534,60 @@ describe("Password Reset API", () => {
     expect(res.body.error).toContain("8 characters");
   });
 });
+
+describe("Export API", () => {
+  test("GET /api/export returns JSON export", async () => {
+    const res = await request(app)
+      .get("/api/export?format=json")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("application/json");
+    expect(res.body).toHaveProperty("exportedAt");
+    expect(res.body).toHaveProperty("habits");
+    expect(Array.isArray(res.body.habits)).toBe(true);
+
+    if (res.body.habits.length > 0) {
+      const habit = res.body.habits[0];
+      expect(habit).toHaveProperty("name");
+      expect(habit).toHaveProperty("frequency");
+      expect(habit).toHaveProperty("currentStreak");
+      expect(habit).toHaveProperty("bestStreak");
+      expect(habit).toHaveProperty("checkIns");
+    }
+  });
+
+  test("GET /api/export returns CSV export", async () => {
+    const res = await request(app)
+      .get("/api/export?format=csv")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("text/csv");
+    expect(res.headers["content-disposition"]).toContain("attachment");
+    expect(res.text).toContain("Habit");
+    expect(res.text).toContain("Check-in Date");
+  });
+
+  test("GET /api/export defaults to JSON", async () => {
+    const res = await request(app)
+      .get("/api/export")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty("habits");
+  });
+
+  test("GET /api/export rejects invalid format", async () => {
+    const res = await request(app)
+      .get("/api/export?format=xml")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  test("GET /api/export rejects unauthenticated requests", async () => {
+    const res = await request(app).get("/api/export");
+    expect(res.status).toBe(401);
+  });
+});

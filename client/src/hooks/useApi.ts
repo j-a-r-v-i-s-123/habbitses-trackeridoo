@@ -144,6 +144,21 @@ export const api = {
       body: JSON.stringify({ password }),
     }),
 
+  // Export
+  exportData: async (format: "json" | "csv" = "json") => {
+    const res = await fetch(`/api/export?format=${format}`, { credentials: "include" });
+    if (!res.ok) throw new Error("Export failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `habittracker-export-${new Date().toISOString().slice(0, 10)}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
   // Reminders
   getReminders: () =>
     request<{ reminders: ReminderSetting[] }>("/reminders"),

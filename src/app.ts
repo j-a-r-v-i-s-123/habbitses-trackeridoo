@@ -8,6 +8,7 @@ import habitRoutes from "./routes/habits";
 import checkInRoutes from "./routes/check-ins";
 import analyticsRoutes from "./routes/analytics";
 import reminderRoutes from "./routes/reminders";
+import exportRoutes from "./routes/export";
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use("/api/habits", habitRoutes);
 app.use("/api/check-ins", checkInRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/reminders", reminderRoutes);
+app.use("/api/export", exportRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {

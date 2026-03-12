@@ -281,6 +281,27 @@ export default function SettingsView() {
           )}
         </Section>
 
+        {/* Data Export */}
+        <Section title="Data Export">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Download all your habits and check-in history.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => api.exportData("json")}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Export JSON
+            </button>
+            <button
+              onClick={() => api.exportData("csv")}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Export CSV
+            </button>
+          </div>
+        </Section>
+
         {/* Danger Zone */}
         <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-red-200 dark:border-red-900/50 overflow-hidden">
           <div className="px-5 py-4 border-b border-red-200 dark:border-red-900/50">
