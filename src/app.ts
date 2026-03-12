@@ -11,7 +11,8 @@ import reminderRoutes from "./routes/reminders";
 
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+const corsOrigin = process.env.CORS_ORIGIN || true; // restrict in production via CORS_ORIGIN env var
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
