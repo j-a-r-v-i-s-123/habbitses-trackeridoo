@@ -1,10 +1,22 @@
 import { Router, Response } from "express";
+import rateLimit from "express-rate-limit";
 import prisma from "../db";
 import { authenticateToken, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
+const isTest = process.env.NODE_ENV === "test";
+
+const reminderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isTest ? 1000 : 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+});
+
 router.use(authenticateToken);
+router.use(reminderLimiter);
 
 function isValidTime(time: string): boolean {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(time);

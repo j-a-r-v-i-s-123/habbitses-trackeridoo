@@ -45,7 +45,7 @@ const strictAuthLimiter = rateLimit({
 });
 
 // POST /api/auth/register
-router.post("/register", authLimiter, async (req: Request, res: Response): Promise<void> => {
+router.post("/register", strictAuthLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, name } = req.body;
 

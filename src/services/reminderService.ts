@@ -17,6 +17,26 @@ const transporter = nodemailer.createTransport({
 
 const FROM_ADDRESS = process.env.SMTP_FROM || "reminders@habittracker.app";
 
+// Per-user email rate limiting: max emails per user per hour
+const MAX_EMAILS_PER_USER_PER_HOUR = 5;
+const emailSendLog = new Map<string, number[]>();
+
+function isRateLimited(userEmail: string): boolean {
+  const now = Date.now();
+  const oneHourAgo = now - 60 * 60 * 1000;
+  const timestamps = (emailSendLog.get(userEmail) || []).filter(
+    (t) => t > oneHourAgo,
+  );
+  emailSendLog.set(userEmail, timestamps);
+  return timestamps.length >= MAX_EMAILS_PER_USER_PER_HOUR;
+}
+
+function recordEmailSent(userEmail: string): void {
+  const timestamps = emailSendLog.get(userEmail) || [];
+  timestamps.push(Date.now());
+  emailSendLog.set(userEmail, timestamps);
+}
+
 async function sendReminderEmail(
   to: string,
   habitName: string,
@@ -66,7 +86,14 @@ async function checkAndSendReminders(): Promise<void> {
     });
 
     for (const habit of habits) {
+      if (isRateLimited(habit.user.email)) {
+        console.warn(
+          `Rate limit reached for ${habit.user.email}, skipping reminder for "${habit.name}"`,
+        );
+        continue;
+      }
       await sendReminderEmail(habit.user.email, habit.name);
+      recordEmailSent(habit.user.email);
     }
 
     if (habits.length > 0) {
