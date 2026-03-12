@@ -1,17 +1,26 @@
 import { useState, useEffect } from "react";
-import { api } from "@/hooks/useApi";
+import { api, setApiToast } from "@/hooks/useApi";
 import AuthForm from "@/components/AuthForm";
 import TodayView from "@/components/TodayView";
 import Dashboard from "@/components/Dashboard";
 import HabitsView from "@/components/HabitsView";
 import SettingsView from "@/components/SettingsView";
 import Layout from "@/components/Layout";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { ToastProvider, useToast } from "@/components/Toast";
 
 type Page = "today" | "dashboard" | "habits" | "settings";
 
-function App() {
+function AppContent() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [page, setPage] = useState<Page>("today");
+  const { toast } = useToast();
+
+  // Wire up API toast notifications
+  useEffect(() => {
+    setApiToast(toast);
+    return () => setApiToast(null);
+  }, [toast]);
 
   useEffect(() => {
     api.me().then(() => setAuthed(true)).catch(() => setAuthed(false));
@@ -41,11 +50,35 @@ function App() {
 
   return (
     <Layout page={page} onNavigate={setPage} onLogout={handleLogout}>
-      {page === "dashboard" && <Dashboard />}
-      {page === "today" && <TodayView />}
-      {page === "habits" && <HabitsView />}
-      {page === "settings" && <SettingsView />}
+      {page === "dashboard" && (
+        <ErrorBoundary key="dashboard" fallbackTitle="Dashboard failed to load">
+          <Dashboard />
+        </ErrorBoundary>
+      )}
+      {page === "today" && (
+        <ErrorBoundary key="today" fallbackTitle="Today view failed to load">
+          <TodayView />
+        </ErrorBoundary>
+      )}
+      {page === "habits" && (
+        <ErrorBoundary key="habits" fallbackTitle="Habits view failed to load">
+          <HabitsView />
+        </ErrorBoundary>
+      )}
+      {page === "settings" && (
+        <ErrorBoundary key="settings" fallbackTitle="Settings failed to load">
+          <SettingsView />
+        </ErrorBoundary>
+      )}
     </Layout>
+  );
+}
+
+function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }
 

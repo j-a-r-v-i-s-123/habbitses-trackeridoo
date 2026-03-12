@@ -37,6 +37,8 @@ export default function TodayView() {
   const [loading, setLoading] = useState(true);
   const [animating, setAnimating] = useState<string | null>(null);
   const [streaks, setStreaks] = useState<Record<string, Streaks>>({});
+  const [streakErrors, setStreakErrors] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState("");
   const [expandedNote, setExpandedNote] = useState<string | null>(null);
   const [noteTexts, setNoteTexts] = useState<Record<string, string>>({});
 
@@ -57,18 +59,23 @@ export default function TodayView() {
       setNoteTexts(notes);
 
       // Load streaks for all habits
+      const errors: Record<string, boolean> = {};
       const streakResults = await Promise.all(
         habitsRes.habits.map(async (h) => {
           try {
             const s = await api.getStreaks(h.id);
             return [h.id, s] as const;
           } catch {
+            errors[h.id] = true;
             return [h.id, { currentStreak: 0, bestStreak: 0, completionRate: 0 }] as const;
           }
         })
       );
       setStreaks(Object.fromEntries(streakResults));
+      setStreakErrors(errors);
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load data";
+      setError(message);
       console.error("Failed to load data:", err);
     } finally {
       setLoading(false);
@@ -194,9 +201,25 @@ export default function TodayView() {
           </div>
         )}
 
+        {/* Error */}
+        {error && (
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 rounded-xl p-4 text-center">
+            <p className="text-sm text-red-600 dark:text-red-400 mb-2">{error}</p>
+            <button
+              onClick={loadData}
+              className="px-3 py-1.5 text-xs font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* Habits List */}
         {loading ? (
-          <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading...</div>
+          <div className="flex items-center justify-center py-12">
+            <Spinner />
+            <span className="ml-3 text-gray-400 dark:text-gray-500">Loading...</span>
+          </div>
         ) : habits.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-400 dark:text-gray-500 text-lg mb-2">No habits yet</p>
@@ -237,7 +260,11 @@ export default function TodayView() {
                       {habit.description && (
                         <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{habit.description}</p>
                       )}
-                      {habitStreaks && (
+                      {streakErrors[habit.id] ? (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-xs text-red-400 dark:text-red-500">Streak unavailable</span>
+                        </div>
+                      ) : habitStreaks ? (
                         <div className="flex gap-3 mt-1">
                           {habitStreaks.currentStreak > 0 && (
                             <span className="text-xs font-medium text-orange-500">
@@ -253,7 +280,7 @@ export default function TodayView() {
                             {habitStreaks.completionRate}%
                           </span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* Action Buttons */}
@@ -354,5 +381,14 @@ export default function TodayView() {
         )}
       </div>
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="animate-spin h-5 w-5 text-primary-600" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
   );
 }

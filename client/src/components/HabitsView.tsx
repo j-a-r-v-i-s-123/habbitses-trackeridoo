@@ -83,6 +83,8 @@ export default function HabitsView() {
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [archiving, setArchiving] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     api.getHabits()
@@ -173,16 +175,20 @@ export default function HabitsView() {
   }
 
   async function handleDelete(id: string) {
+    setDeletingId(id);
     try {
       await api.deleteHabit(id);
       setHabits((prev) => prev.filter((h) => h.id !== id));
       setConfirmDelete(null);
     } catch (err) {
       console.error("Failed to delete habit:", err);
+    } finally {
+      setDeletingId(null);
     }
   }
 
   async function toggleArchive(habit: Habit) {
+    setArchiving(habit.id);
     try {
       const { habit: updated } = await api.updateHabit(habit.id, {
         archived: !habit.archived,
@@ -190,13 +196,16 @@ export default function HabitsView() {
       setHabits((prev) => prev.map((h) => (h.id === habit.id ? updated : h)));
     } catch (err) {
       console.error("Failed to archive habit:", err);
+    } finally {
+      setArchiving(null);
     }
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <span className="text-gray-400 dark:text-gray-500">Loading habits...</span>
+        <Spinner size={5} />
+        <span className="ml-3 text-gray-400 dark:text-gray-500">Loading habits...</span>
       </div>
     );
   }
@@ -509,24 +518,32 @@ export default function HabitsView() {
                   </button>
                   <button
                     onClick={() => toggleArchive(habit)}
-                    className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    disabled={archiving === habit.id}
+                    className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
                     title={habit.archived ? "Unarchive" : "Archive"}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                    </svg>
+                    {archiving === habit.id ? (
+                      <Spinner size={4} />
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                      </svg>
+                    )}
                   </button>
                   {confirmDelete === habit.id ? (
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleDelete(habit.id)}
-                        className="px-2 py-1 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                        disabled={deletingId === habit.id}
+                        className="px-2 py-1 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-1"
                       >
-                        Confirm
+                        {deletingId === habit.id ? <Spinner size={3} /> : null}
+                        {deletingId === habit.id ? "Deleting..." : "Confirm"}
                       </button>
                       <button
                         onClick={() => setConfirmDelete(null)}
-                        className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                        disabled={deletingId === habit.id}
+                        className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50"
                       >
                         Cancel
                       </button>
@@ -549,5 +566,14 @@ export default function HabitsView() {
         </div>
       )}
     </div>
+  );
+}
+
+function Spinner({ size = 4 }: { size?: number }) {
+  return (
+    <svg className={`animate-spin h-${size} w-${size} text-current`} viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
   );
 }

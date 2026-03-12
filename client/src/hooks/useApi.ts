@@ -1,16 +1,41 @@
 const BASE = "/api";
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `Request failed: ${res.status}`);
+// Global toast callback — set by ToastProvider via setApiToast
+let toastFn: ((message: string, type?: "error" | "success" | "info") => void) | null = null;
+
+export function setApiToast(fn: typeof toastFn) {
+  toastFn = fn;
+}
+
+async function request<T>(path: string, options?: RequestInit, retries = 1): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${BASE}${path}`, {
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        ...options,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Request failed: ${res.status}`);
+      }
+      return res.json();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < retries) {
+        // Wait before retrying (300ms * attempt)
+        await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+      }
+    }
   }
-  return res.json();
+
+  // All retries exhausted — show toast and throw
+  if (toastFn && lastError) {
+    toastFn(lastError.message, "error");
+  }
+  throw lastError!;
 }
 
 export interface Habit {
