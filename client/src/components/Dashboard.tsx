@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api, AnalyticsOverview } from "@/hooks/useApi";
+import { api, AnalyticsOverview, CheckIn } from "@/hooks/useApi";
 import {
   BarChart,
   Bar,
@@ -20,13 +20,19 @@ const ICONS: Record<string, string> = {
 
 export default function Dashboard() {
   const [data, setData] = useState<AnalyticsOverview | null>(null);
+  const [recentNotes, setRecentNotes] = useState<CheckIn[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    api
-      .getAnalyticsOverview()
-      .then(setData)
+    Promise.all([
+      api.getAnalyticsOverview(),
+      api.getRecentNotes(20).catch(() => ({ checkIns: [] })),
+    ])
+      .then(([analytics, notes]) => {
+        setData(analytics);
+        setRecentNotes(notes.checkIns);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -64,6 +70,46 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Activity Heatmap</h2>
           <CalendarHeatmap dailyActivity={data.dailyActivity} />
         </section>
+
+        {/* Journal / Recent Notes */}
+        {recentNotes.length > 0 && (
+          <section className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 mb-8">
+            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">
+              Journal
+            </h2>
+            <div className="space-y-3">
+              {recentNotes.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-700"
+                >
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 mt-0.5"
+                    style={{ backgroundColor: (c.habit?.color || "#5b4fcf") + "22" }}
+                  >
+                    {ICONS[c.habit?.icon || "star"] || ICONS.star}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        {c.habit?.name || "Habit"}
+                      </span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                        {c.date}
+                      </span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${c.status === "done" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"}`}>
+                        {c.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
+                      {c.note}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Per-Habit Charts */}
         {data.habitStats.length > 0 && (

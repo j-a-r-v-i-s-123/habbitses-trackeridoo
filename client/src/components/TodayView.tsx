@@ -37,6 +37,8 @@ export default function TodayView() {
   const [loading, setLoading] = useState(true);
   const [animating, setAnimating] = useState<string | null>(null);
   const [streaks, setStreaks] = useState<Record<string, Streaks>>({});
+  const [expandedNote, setExpandedNote] = useState<string | null>(null);
+  const [noteTexts, setNoteTexts] = useState<Record<string, string>>({});
 
   const loadData = useCallback(async () => {
     try {
@@ -46,6 +48,13 @@ export default function TodayView() {
       ]);
       setHabits(habitsRes.habits);
       setCheckIns(checkInsRes.checkIns);
+
+      // Initialize note texts from existing check-ins
+      const notes: Record<string, string> = {};
+      checkInsRes.checkIns.forEach((c) => {
+        if (c.note) notes[c.habitId] = c.note;
+      });
+      setNoteTexts(notes);
 
       // Load streaks for all habits
       const streakResults = await Promise.all(
@@ -95,13 +104,29 @@ export default function TodayView() {
         setAnimating(habit.id);
         setTimeout(() => setAnimating(null), 600);
       }
-      const { checkIn } = await api.createCheckIn(habit.id, date, targetStatus);
+      const note = noteTexts[habit.id]?.trim() || undefined;
+      const { checkIn } = await api.createCheckIn(habit.id, date, targetStatus, note);
       setCheckIns((prev) => {
         const without = prev.filter((c) => c.habitId !== habit.id);
         return [...without, checkIn];
       });
     } catch (err) {
       console.error("Failed to create check-in:", err);
+    }
+  }
+
+  async function saveNote(habit: Habit) {
+    const existing = getCheckIn(habit.id);
+    if (!existing) return;
+    const note = noteTexts[habit.id]?.trim() || "";
+    try {
+      const { checkIn } = await api.createCheckIn(habit.id, date, existing.status, note);
+      setCheckIns((prev) => {
+        const without = prev.filter((c) => c.habitId !== habit.id);
+        return [...without, checkIn];
+      });
+    } catch (err) {
+      console.error("Failed to save note:", err);
     }
   }
 
@@ -233,6 +258,23 @@ export default function TodayView() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 flex-shrink-0">
+                      {/* Note Toggle */}
+                      <button
+                        onClick={() => setExpandedNote(expandedNote === habit.id ? null : habit.id)}
+                        className={`
+                          w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
+                          ${checkIn?.note
+                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-500"
+                          }
+                        `}
+                        aria-label={`Add note for ${habit.name}`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+
                       {/* Done Button */}
                       <button
                         onClick={() => toggleStatus(habit, "done")}
@@ -269,6 +311,32 @@ export default function TodayView() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Expandable Note Area */}
+                  {expandedNote === habit.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                      <textarea
+                        value={noteTexts[habit.id] || ""}
+                        onChange={(e) => setNoteTexts((prev) => ({ ...prev, [habit.id]: e.target.value }))}
+                        placeholder="Add a note..."
+                        rows={2}
+                        className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                      />
+                      {checkIn && (
+                        <button
+                          onClick={() => saveNote(habit)}
+                          className="mt-2 px-3 py-1 text-xs font-medium rounded-md bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+                        >
+                          Save Note
+                        </button>
+                      )}
+                      {!checkIn && (
+                        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                          Check in first to save your note
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

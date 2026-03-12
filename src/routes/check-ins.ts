@@ -42,7 +42,7 @@ router.get("/", async (req: AuthRequest, res: Response): Promise<void> => {
 // POST /api/check-ins
 router.post("/", async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { habitId, date, status } = req.body;
+    const { habitId, date, status, note } = req.body;
 
     if (!habitId || typeof habitId !== "string") {
       res.status(400).json({ error: "habitId is required" });
@@ -56,6 +56,12 @@ router.post("/", async (req: AuthRequest, res: Response): Promise<void> => {
 
     if (!status || !VALID_STATUSES.includes(status)) {
       res.status(400).json({ error: "Status must be 'done' or 'skipped'" });
+      return;
+    }
+
+    // Validate optional note
+    if (note !== undefined && typeof note !== "string") {
+      res.status(400).json({ error: "Note must be a string" });
       return;
     }
 
@@ -73,11 +79,12 @@ router.post("/", async (req: AuthRequest, res: Response): Promise<void> => {
       where: {
         habitId_date: { habitId, date },
       },
-      update: { status },
+      update: { status, note: note ?? undefined },
       create: {
         habitId,
         date,
         status,
+        note: note || null,
         userId: req.userId!,
       },
     });
@@ -85,6 +92,35 @@ router.post("/", async (req: AuthRequest, res: Response): Promise<void> => {
     res.status(201).json({ checkIn });
   } catch (err) {
     console.error("Create check-in error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/check-ins/notes/recent - recent check-ins with notes
+router.get("/notes/recent", async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+
+    const checkIns = await prisma.checkIn.findMany({
+      where: {
+        userId: req.userId!,
+        note: { not: null },
+      },
+      include: {
+        habit: {
+          select: { id: true, name: true, color: true, icon: true },
+        },
+      },
+      orderBy: { date: "desc" },
+      take: limit,
+    });
+
+    // Filter out empty strings (SQLite stores "" not null sometimes)
+    const withNotes = checkIns.filter((c) => c.note && c.note.trim().length > 0);
+
+    res.json({ checkIns: withNotes });
+  } catch (err) {
+    console.error("Recent notes error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

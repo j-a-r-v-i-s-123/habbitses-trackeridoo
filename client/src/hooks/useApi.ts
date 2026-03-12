@@ -37,6 +37,7 @@ export interface CheckIn {
   habitId: string;
   date: string;
   status: "done" | "skipped";
+  note?: string | null;
   habit?: Pick<Habit, "id" | "name" | "color" | "icon" | "frequency">;
 }
 
@@ -115,13 +116,15 @@ export const api = {
   // Check-ins
   getCheckIns: (date: string) =>
     request<{ checkIns: CheckIn[] }>(`/check-ins?date=${date}`),
-  createCheckIn: (habitId: string, date: string, status: "done" | "skipped") =>
+  createCheckIn: (habitId: string, date: string, status: "done" | "skipped", note?: string) =>
     request<{ checkIn: CheckIn }>("/check-ins", {
       method: "POST",
-      body: JSON.stringify({ habitId, date, status }),
+      body: JSON.stringify({ habitId, date, status, ...(note !== undefined ? { note } : {}) }),
     }),
   deleteCheckIn: (id: string) =>
     request<{ message: string }>(`/check-ins/${id}`, { method: "DELETE" }),
+  getRecentNotes: (limit = 20) =>
+    request<{ checkIns: CheckIn[] }>(`/check-ins/notes/recent?limit=${limit}`),
 
   // Analytics
   getAnalyticsOverview: () =>
